@@ -9,6 +9,9 @@ void cuda_hello() {
 }
 
 int main() {
+
+
+
 	cuda_hello << <1, 1 >> > ();
 
 
