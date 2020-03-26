@@ -19,7 +19,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 message("${OpenCL_INCLUDE_DIRS}")
 
-add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCL_LIBRARIES}
