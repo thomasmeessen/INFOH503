@@ -27,19 +27,12 @@ target_link_libraries(
 )
 
 
-add_executable(example  ${CMAKE_CURRENT_SOURCE_DIR}/example.cpp)
-target_link_libraries(
-    example
-    ${OpenCL_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-)
-
 # Copying files with OpenCL kernels
-set(OPENCL_FILES
-    kernels/fft1D_1024_kernel_src.cl
-)
-if(OPENCL_FILES)
-  foreach(OPENCL_FILE ${OPENCL_FILES})
-    configure_file(${OPENCL_FILE} ${OPENCL_FILE} COPYONLY)
-  endforeach()
-endif()
+#set(OPENCL_FILES
+#    kernels/fft1D_1024_kernel_src.cl
+#)
+#if(OPENCL_FILES)
+#  foreach(OPENCL_FILE ${OPENCL_FILES})
+#    configure_file(${OPENCL_FILE} ${OPENCL_FILE} COPYONLY)
+#  endforeach()
+#endif()
