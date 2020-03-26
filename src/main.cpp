@@ -73,6 +73,9 @@ int main(void) { // (int argc, const char * argv[]) {
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     size_t global_work_size = NWITEMS;
     kernel.setArg(0,outputBuffer);
+    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(10), cl::NullRange);
+    command_queue.finish();
 
+    //
    return 0;
 }
