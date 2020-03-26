@@ -1,19 +1,8 @@
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_TARGET_OPENCL_VERSION 200
 
-#include <CL/cl2.hpp>
-#include <iostream>
-#include <vector>
-#include <string>
-#include <fstream>
+#include <CL/cl.h>
+#include <stdio.h>
 
 #define NWITEMS 512
-const int numElements = 32;
-
-
-using namespace std;
-using namespace cl;
-
 // A simple memset kernel
 const char *source =
         "kernel void memset(   global uint *dst )             \n"
@@ -21,69 +10,74 @@ const char *source =
         "    dst[get_global_id(0)] = get_global_id(0);        \n"
         "}                                                    \n";
 
+int main(int argc, char ** argv)
+{
+    // 1. Get a platform.
+    cl_platform_id platform;
+    clGetPlatformIDs( 1, &platform, NULL );
 
-int main(void) { // (int argc, const char * argv[]) {
-
-  // Get Platform ID tuto
-  std::vector<Platform> platforms;
-  Platform::get(&platforms);
-  Platform platform;
-  for (auto &p : platforms) {
-    std::string platver = p.getInfo<CL_PLATFORM_VERSION>();
-    if (platver.find("OpenCL 2.") != std::string::npos) {
-        platform = p;
-    }
-  }
-
-  if (platform() == 0)  {
-        std::cout << "No OpenCL 2.0 platform found.";
-        return -1;
-  }
-
-  cout << "Platform Name: " << (string)platform.getInfo<CL_PLATFORM_NAME>() << " version: "<< (string)platform.getInfo<CL_PLATFORM_VERSION>() << endl;
-
-  Platform newP = cl::Platform::setDefault(platform);
-
-  if (newP != platform) {
-      cout << "Error setting default platform.";
-      return -1;
-  }
-
-  // Use the wrapper getDeviceId
-  std::vector<Device> vector_devices;
-  platform.getDevices(CL_DEVICE_TYPE_GPU, &vector_devices);
-  for(auto &&device : vector_devices){
-    std::string device_name = (string)device.getInfo<CL_DEVICE_NAME> ();
-    cout << device_name << endl;
-  }
+    // 2. Find a gpu device.
+    cl_device_id device;
+    clGetDeviceIDs( platform,
+                    CL_DEVICE_TYPE_GPU,
+                    1,
+                    &device, NULL);
 
     // 3. Create a context and command queue on that device.
-    Context opencl_context(vector_devices, NULL, NULL, NULL);
-    CommandQueue command_queue(opencl_context, vector_devices[0], 0, NULL);
+    cl_context context = clCreateContext( NULL,
+                                          1,
+                                          &device,
+                                          NULL, NULL, NULL);
+
+    cl_command_queue queue = clCreateCommandQueue( context,
+                                                   device,
+                                                   0, NULL );
 
     // 4. Perform runtime source compilation, and obtain kernel entry point.
-    Program cl_program( opencl_context, source, NULL);
-    cl_program.build(vector_devices, NULL, NULL, NULL);
-    Kernel kernel(cl_program, "memset", NULL);
+    cl_program program = clCreateProgramWithSource( context,
+                                                    1,
+                                                    &source,
+                                                    NULL, NULL );
+
+    clBuildProgram( program, 1, &device, NULL, NULL, NULL );
+
+    cl_kernel kernel = clCreateKernel( program, "memset", NULL );
 
     // 5. Create a data buffer.
-    std::vector<int> output(numElements, 0);
-    cl::Buffer outputBuffer(opencl_context, begin(output), end(output), false);
+    cl_mem buffer = clCreateBuffer( context,
+                                    CL_MEM_WRITE_ONLY,
+                                    NWITEMS * sizeof(cl_uint),
+                                    NULL, NULL );
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    //size_t global_work_size = NWITEMS;
-    kernel.setArg(0,outputBuffer);
-    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(numElements), cl::NullRange);
-    command_queue.finish();
+    size_t global_work_size = NWITEMS;
+    clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
+
+    clEnqueueNDRangeKernel( queue,
+                            kernel,
+                            1,
+                            NULL,
+                            &global_work_size,
+                            NULL,
+                            0,
+                            NULL, NULL);
+
+    clFinish( queue );
 
     // 7. Look at the results via synchronous buffer map.
-    cl::copy(outputBuffer, begin(output), end(output));
-    //void* hostPtr = command_queue.enqueueMapBuffer(outputBuffer, CL_TRUE, CL_MAP_READ, 0, output.size(), NULL, NULL  );
+    cl_uint *ptr;
+    ptr = (cl_uint *) clEnqueueMapBuffer( queue,
+                                          buffer,
+                                          CL_TRUE,
+                                          CL_MAP_READ,
+                                          0,
+                                          NWITEMS * sizeof(cl_uint),
+                                          0, NULL, NULL, NULL );
 
-    //if(hostPtr == 0) throw std::runtime_error("ERROR - NULL host pointer");
-    for(auto && value: output ){
-        cout << value << endl;
-    }
+    int i;
 
-   return 0;
+    for(i=0; i < NWITEMS; i++)
+        printf("%d %d\n", i, ptr[i]);
+
+    return 0;
 }
