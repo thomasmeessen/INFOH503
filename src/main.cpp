@@ -44,9 +44,8 @@ int main(void) { // (int argc, const char * argv[]) {
   std::vector<Device> vector_devices;
   platform.getDevices(CL_DEVICE_TYPE_GPU, &vector_devices);
   for(auto &&device : vector_devices){
-    std::string device_name;
-    //device.getInfo(CL_DEVICE_NAME, device_name);
-    //cout << device_name << endl;
+    std::string device_name = (string)device.getInfo<CL_DEVICE_NAME> ();
+    cout << device_name << endl;
   }
 
 
