@@ -7,11 +7,20 @@
 #include <string>
 #include <fstream>
 
+#define NWITEMS 512
 const int numElements = 32;
 
 
 using namespace std;
 using namespace cl;
+
+// A simple memset kernel
+const char *source =
+        "kernel void memset(   global uint *dst )             \n"
+        "{                                                    \n"
+        "    dst[get_global_id(0)] = get_global_id(0);        \n"
+        "}                                                    \n";
+
 
 int main(void) { // (int argc, const char * argv[]) {
 
@@ -48,8 +57,22 @@ int main(void) { // (int argc, const char * argv[]) {
     cout << device_name << endl;
   }
 
+    // 3. Create a context and command queue on that device.
+  Context opencl_context(vector_devices, NULL, NULL, NULL);
+  CommandQueue command_queue(opencl_context, vector_devices[0], 0, NULL);
 
+    // 4. Perform runtime source compilation, and obtain kernel entry point.
+  Program cl_program( opencl_context, source, NULL);
+  cl_program.build(vector_devices, NULL, NULL, NULL);
+  Kernel kernel(cl_program, "memset", NULL);
 
+    // 5. Create a data buffer.
+    std::vector<int> output(numElements, 0xdeadbeef);
+    cl::Buffer outputBuffer(begin(output), end(output), false);
+
+    // 6. Launch the kernel. Let OpenCL pick the local work size.
+    size_t global_work_size = NWITEMS;
+    kernel.setArg(0,sizeof(outputBuffer), (void*) &outputBuffer);
 
    return 0;
 }
