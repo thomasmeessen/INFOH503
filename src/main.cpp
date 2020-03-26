@@ -67,15 +67,23 @@ int main(void) { // (int argc, const char * argv[]) {
     Kernel kernel(cl_program, "memset", NULL);
 
     // 5. Create a data buffer.
-    std::vector<int> output(numElements, 0xdeadbeef);
+    std::vector<int> output(numElements, 0);
     cl::Buffer outputBuffer(opencl_context, begin(output), end(output), false);
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    size_t global_work_size = NWITEMS;
+    //size_t global_work_size = NWITEMS;
     kernel.setArg(0,outputBuffer);
-    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(10), cl::NullRange);
+    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(numElements), cl::NullRange);
     command_queue.finish();
 
-    //
+    // 7. Look at the results via synchronous buffer map.
+    cl::copy(outputBuffer, begin(output), end(output));
+    //void* hostPtr = command_queue.enqueueMapBuffer(outputBuffer, CL_TRUE, CL_MAP_READ, 0, output.size(), NULL, NULL  );
+
+    //if(hostPtr == 0) throw std::runtime_error("ERROR - NULL host pointer");
+    for(auto && value: output ){
+        cout << value << endl;
+    }
+
    return 0;
 }
