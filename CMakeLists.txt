@@ -11,7 +11,7 @@ endif ()
 project(CL_hello)
 
 find_package(OpenCL REQUIRED)
-include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+
 
 find_package(Threads REQUIRED)
 
@@ -20,6 +20,7 @@ set(CMAKE_CXX_STANDARD 14)
 message("${OpenCL_INCLUDE_DIRS}")
 
 add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCL_LIBRARIES}
@@ -27,12 +28,10 @@ target_link_libraries(
 )
 
 
-# Copying files with OpenCL kernels
-#set(OPENCL_FILES
-#    kernels/fft1D_1024_kernel_src.cl
-#)
-#if(OPENCL_FILES)
-#  foreach(OPENCL_FILE ${OPENCL_FILES})
-#    configure_file(${OPENCL_FILE} ${OPENCL_FILE} COPYONLY)
-#  endforeach()
-#endif()
+# Copying files containing OpenCL kernels
+FILE(GLOB OPENCL_FILES  "${CMAKE_CURRENT_SOURCE_DIR}/kernels/*.cl" )
+if(OPENCL_FILES)
+  foreach(OPENCL_FILE ${OPENCL_FILES})
+    file(COPY ${OPENCL_FILE}  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  endforeach()
+endif()

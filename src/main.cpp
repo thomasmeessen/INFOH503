@@ -15,54 +15,52 @@ using namespace std;
 using namespace cl;
 
 // A simple memset kernel
-const char *source =
-        "kernel void memset(   global uint *dst )             \n"
-        "{                                                    \n"
-        "    dst[get_global_id(0)] = get_global_id(0);        \n"
-        "}                                                    \n";
+const string source_path = "threshold.cl";
+
 
 
 int main(void) { // (int argc, const char * argv[]) {
 
-  // Get Platform ID tuto
-  std::vector<Platform> platforms;
-  Platform::get(&platforms);
-  Platform platform;
-  for (auto &p : platforms) {
+
+    std::vector<Platform> platforms;
+    Platform::get(&platforms);
+    Platform platform;
+    for (auto &p : platforms) {
     std::string platver = p.getInfo<CL_PLATFORM_VERSION>();
     if (platver.find("OpenCL 2.") != std::string::npos) {
         platform = p;
     }
-  }
-
-  if (platform() == 0)  {
+    }
+    if (platform() == 0)  {
         std::cout << "No OpenCL 2.0 platform found.";
         return -1;
-  }
+    }
 
-  cout << "Platform Name: " << (string)platform.getInfo<CL_PLATFORM_NAME>() << " version: "<< (string)platform.getInfo<CL_PLATFORM_VERSION>() << endl;
+    cout << "Platform Name: " << (string)platform.getInfo<CL_PLATFORM_NAME>() << " version: "<< (string)platform.getInfo<CL_PLATFORM_VERSION>() << endl;
 
-  Platform newP = cl::Platform::setDefault(platform);
+    Platform newP = cl::Platform::setDefault(platform);
 
-  if (newP != platform) {
+    if (newP != platform) {
       cout << "Error setting default platform.";
       return -1;
-  }
+    }
 
-  // Use the wrapper getDeviceId
-  std::vector<Device> vector_devices;
-  platform.getDevices(CL_DEVICE_TYPE_GPU, &vector_devices);
-  for(auto &&device : vector_devices){
-    std::string device_name = (string)device.getInfo<CL_DEVICE_NAME> ();
-    cout << device_name << endl;
-  }
+    // Use the wrapper getDeviceId
+    std::vector<Device> vector_devices;
+    platform.getDevices(CL_DEVICE_TYPE_GPU, &vector_devices);
+    for(auto &&device : vector_devices){
+        std::string device_name = (string)device.getInfo<CL_DEVICE_NAME> ();
+        cout << device_name << endl;
+    }
 
     // 3. Create a context and command queue on that device.
     Context opencl_context(vector_devices, NULL, NULL, NULL);
     CommandQueue command_queue(opencl_context, vector_devices[0], 0, NULL);
 
     // 4. Perform runtime source compilation, and obtain kernel entry point.
-    Program cl_program( opencl_context, source, NULL);
+    std::ifstream source_file(source_path);
+    std::string source_code(std::istreambuf_iterator<char>(source_file), (std::istreambuf_iterator<char>()));
+    Program cl_program( opencl_context, source_code);
     cl_program.build(vector_devices, NULL, NULL, NULL);
     Kernel kernel(cl_program, "memset", NULL);
 
@@ -85,5 +83,6 @@ int main(void) { // (int argc, const char * argv[]) {
         cout << value << endl;
     }
 
+     //*/
    return 0;
 }
