@@ -30,12 +30,12 @@ target_link_libraries(
 
 
 # Copying files containing OpenCL kernels
-FILE(GLOB OPENCL_FILES  "${CMAKE_CURRENT_SOURCE_DIR}/kernels/*.cl" )
-if(OPENCL_FILES)
-  foreach(OPENCL_FILE ${OPENCL_FILES})
-    file(COPY ${OPENCL_FILE}  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-  endforeach()
-endif()
+add_custom_target(
+        update_kernels ALL
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/update_kernels.cmake ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Copying new version of kernel files..."
+)
+add_dependencies(${PROJECT_NAME} update_kernels)
 
 # Copying image to build folder
 FILE(GLOB TEST_IMAGES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*.png" )

@@ -88,8 +88,6 @@ int main(void) { // (int argc, const char * argv[]) {
     source_image = 0;
     command_queue.enqueueReadBuffer(outputBuffer, CL_TRUE, 0, image_1D_size, (void*)source_image.data);
 
-
-    cout << source_image <<endl;
     cv::imwrite("post.png", source_image);
      //*/
    return 0;

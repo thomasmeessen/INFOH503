@@ -7,7 +7,7 @@ kernel void memset(   global uint *dst )
 
     if ( dst[id] > 135)
     {
-        dst[id] = 135;
+        dst[id] = 200;
     } else
     {
         dst[id] = dst[id];
