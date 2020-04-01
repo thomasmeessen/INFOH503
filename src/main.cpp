@@ -53,11 +53,11 @@ int main(int argc, char ** argv)
     // 5. Load an image into a buffer
     cv::Mat source_image = cv::imread("paper0.png", cv::IMREAD_GRAYSCALE);
     source_image.convertTo(source_image, CV_32S);
-    cv::Mat cp_mat = source_image.clone();
+
     cv::imwrite("pre.png", source_image);
     int image_1D_size = source_image.cols * source_image.rows * sizeof(int);
     cl_mem buffer = clCreateBuffer( context,
-                                    CL_MEM_WRITE_ONLY,
+                                    CL_MEM_COPY_HOST_PTR,
                                     image_1D_size,
                                     (void*)source_image.data, NULL );
 
@@ -77,13 +77,13 @@ int main(int argc, char ** argv)
 
     // 7. Look at the results via synchronous buffer map.
 
-    source_image=0;
     clEnqueueReadBuffer(queue,
                       buffer,
                       CL_TRUE,
                       NULL,
                       image_1D_size,
                      (void*)source_image.data, NULL, NULL, NULL );
+
 
     cv::imwrite("post.png", source_image);
 //    int i;
