@@ -11,7 +11,7 @@ endif ()
 project(CL_hello)
 
 find_package(OpenCL REQUIRED)
-include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+find_package(OpenCV REQUIRED)
 
 find_package(Threads REQUIRED)
 
@@ -20,19 +20,27 @@ set(CMAKE_CXX_STANDARD 14)
 message("${OpenCL_INCLUDE_DIRS}")
 
 add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${OpenCV_LIBS}
 )
 
 
-# Copying files with OpenCL kernels
-#set(OPENCL_FILES
-#    kernels/fft1D_1024_kernel_src.cl
-#)
-#if(OPENCL_FILES)
-#  foreach(OPENCL_FILE ${OPENCL_FILES})
-#    configure_file(${OPENCL_FILE} ${OPENCL_FILE} COPYONLY)
-#  endforeach()
-#endif()
+# Copying files containing OpenCL kernels
+add_custom_target(
+        update_kernels ALL
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/update_kernels.cmake ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Copying new version of kernel files..."
+)
+add_dependencies(${PROJECT_NAME} update_kernels)
+
+# Copying image to build folder
+FILE(GLOB TEST_IMAGES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*.png" )
+if(TEST_IMAGES)
+    foreach(TEST_IMAGE ${TEST_IMAGES})
+        file(COPY ${TEST_IMAGE}  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    endforeach()
+endif()

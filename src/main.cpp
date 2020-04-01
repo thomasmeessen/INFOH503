@@ -1,14 +1,18 @@
 
 #include <CL/cl.h>
-#include <stdio.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
 
-#define NWITEMS 512
-// A simple memset kernel
-const char *source =
-        "kernel void memset(   global uint *dst )             \n"
-        "{                                                    \n"
-        "    dst[get_global_id(0)] = get_global_id(0);        \n"
-        "}                                                    \n";
+using namespace std;
+
+
+
+// A simple threshold kernel
+const string source_path = "threshold.cl";
 
 int main(int argc, char ** argv)
 {
@@ -34,30 +38,37 @@ int main(int argc, char ** argv)
                                                    0, NULL );
 
     // 4. Perform runtime source compilation, and obtain kernel entry point.
+    std::ifstream source_file(source_path);
+    std::string source_code(std::istreambuf_iterator<char>(source_file), (std::istreambuf_iterator<char>()));
+    const char* c_string_code = &source_code[0];
     cl_program program = clCreateProgramWithSource( context,
                                                     1,
-                                                    &source,
+                                                    (const char **) &c_string_code,
                                                     NULL, NULL );
 
     clBuildProgram( program, 1, &device, NULL, NULL, NULL );
 
     cl_kernel kernel = clCreateKernel( program, "memset", NULL );
 
-    // 5. Create a data buffer.
+    // 5. Load an image into a buffer
+    cv::Mat source_image = cv::imread("paper0.png", cv::IMREAD_GRAYSCALE);
+    source_image.convertTo(source_image, CV_32S);
+    cv::Mat cp_mat = source_image.clone();
+    cv::imwrite("pre.png", source_image);
+    int image_1D_size = source_image.cols * source_image.rows * sizeof(int);
     cl_mem buffer = clCreateBuffer( context,
                                     CL_MEM_WRITE_ONLY,
-                                    NWITEMS * sizeof(cl_uint),
-                                    NULL, NULL );
+                                    image_1D_size,
+                                    (void*)source_image.data, NULL );
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    size_t global_work_size = NWITEMS;
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
-
+    size_t nb_pixels = source_image.cols * source_image.rows;
     clEnqueueNDRangeKernel( queue,
                             kernel,
                             1,
                             NULL,
-                            &global_work_size,
+                            &nb_pixels,
                             NULL,
                             0,
                             NULL, NULL);
@@ -65,19 +76,20 @@ int main(int argc, char ** argv)
     clFinish( queue );
 
     // 7. Look at the results via synchronous buffer map.
-    cl_uint *ptr;
-    ptr = (cl_uint *) clEnqueueMapBuffer( queue,
-                                          buffer,
-                                          CL_TRUE,
-                                          CL_MAP_READ,
-                                          0,
-                                          NWITEMS * sizeof(cl_uint),
-                                          0, NULL, NULL, NULL );
 
-    int i;
+    source_image=0;
+    clEnqueueReadBuffer(queue,
+                      buffer,
+                      CL_TRUE,
+                      NULL,
+                      image_1D_size,
+                     (void*)source_image.data, NULL, NULL, NULL );
 
-    for(i=0; i < NWITEMS; i++)
-        printf("%d %d\n", i, ptr[i]);
+    cv::imwrite("post.png", source_image);
+//    int i;
+//
+//    for(i=0; i < nb_pixels; i++)
+//        printf("%d %d\n", i, ptr[i]);
 
     return 0;
 }
