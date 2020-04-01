@@ -6,6 +6,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <opencv2/core.hpp>
+#include <opencv2/core/ocl.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #define NWITEMS 512
 const int numElements = 32;
@@ -64,25 +67,30 @@ int main(void) { // (int argc, const char * argv[]) {
     cl_program.build(vector_devices, NULL, NULL, NULL);
     Kernel kernel(cl_program, "memset", NULL);
 
-    // 5. Create a data buffer.
-    std::vector<int> output(numElements, 0);
-    cl::Buffer outputBuffer(opencl_context, begin(output), end(output), false);
+    // 5. Load an image into a buffer
+    cv::Mat source_image = cv::imread("paper0.png", cv::IMREAD_GRAYSCALE);
+    source_image.convertTo(source_image, CV_32S);
+    cv::Mat cp_mat = source_image.clone();
+    cv::imwrite("pre.png", source_image);
+    size_t image_1D_size = source_image.cols * source_image.rows * sizeof(int);
+    cl::Buffer outputBuffer(opencl_context, CL_MEM_COPY_HOST_PTR, image_1D_size, (void*)source_image.data, NULL );
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    //size_t global_work_size = NWITEMS;
     kernel.setArg(0,outputBuffer);
-    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(numElements), cl::NullRange);
+    command_queue.enqueueNDRangeKernel(kernel,cl::NullRange, cl::NDRange(source_image.cols, source_image.rows));
     command_queue.finish();
 
     // 7. Look at the results via synchronous buffer map.
-    cl::copy(outputBuffer, begin(output), end(output));
-    //void* hostPtr = command_queue.enqueueMapBuffer(outputBuffer, CL_TRUE, CL_MAP_READ, 0, output.size(), NULL, NULL  );
+    cl_int ret_code = CL_SUCCESS;
+    //cv::MatIterator_<uint8_t>
+    cl::Event event;
 
-    //if(hostPtr == 0) throw std::runtime_error("ERROR - NULL host pointer");
-    for(auto && value: output ){
-        cout << value << endl;
-    }
+    source_image = 0;
+    command_queue.enqueueReadBuffer(outputBuffer, CL_TRUE, 0, image_1D_size, (void*)source_image.data);
 
+
+    cout << source_image <<endl;
+    cv::imwrite("post.png", source_image);
      //*/
    return 0;
 }

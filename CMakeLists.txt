@@ -11,7 +11,7 @@ endif ()
 project(CL_hello)
 
 find_package(OpenCL REQUIRED)
-
+find_package(OpenCV REQUIRED)
 
 find_package(Threads REQUIRED)
 
@@ -25,6 +25,7 @@ target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${OpenCV_LIBS}
 )
 
 
@@ -34,4 +35,12 @@ if(OPENCL_FILES)
   foreach(OPENCL_FILE ${OPENCL_FILES})
     file(COPY ${OPENCL_FILE}  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   endforeach()
+endif()
+
+# Copying image to build folder
+FILE(GLOB TEST_IMAGES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*.png" )
+if(TEST_IMAGES)
+    foreach(TEST_IMAGE ${TEST_IMAGES})
+        file(COPY ${TEST_IMAGE}  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    endforeach()
 endif()
