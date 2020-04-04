@@ -87,10 +87,7 @@ int main(int argc, char ** argv)
 
 
     cv::imwrite("post.png", source_image);
-//    int i;
-//
-//    for(i=0; i < nb_pixels; i++)
-//        printf("%d %d\n", i, ptr[i]);
+
 
     return 0;
 }
