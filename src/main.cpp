@@ -56,7 +56,7 @@ int main(int argc, char ** argv)
     cl_kernel kernel = clCreateKernel( program, "memset", NULL );
 
     // 5. Load an image into a buffer
-    cv::Mat source_image = cv::imread("paper0.png", cv::IMREAD_COLOR);
+    cv::Mat source_image = cv::imread("classroom_l.png", cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
 
     cv::imwrite("pre.png", source_image);
