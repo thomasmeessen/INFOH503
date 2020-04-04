@@ -64,11 +64,12 @@ int main(int argc, char ** argv)
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
     size_t nb_pixels = source_image.cols * source_image.rows;
+    size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
                             kernel,
-                            1,
+                            2,
                             NULL,
-                            &nb_pixels,
+                            global_work_size_image,
                             NULL,
                             0,
                             NULL, NULL);
