@@ -60,7 +60,7 @@ int main(int argc, char ** argv)
     source_image.convertTo(source_image, CV_8U);  // for greyscale
 
     cv::imwrite("pre.png", source_image);
-    int image_1D_size = source_image.cols * source_image.rows * sizeof(int);
+    int image_1D_size = source_image.cols * source_image.rows * sizeof(char)*3;
     cl_mem buffer = clCreateBuffer( context,
                                     CL_MEM_COPY_HOST_PTR,
                                     image_1D_size,
@@ -68,7 +68,6 @@ int main(int argc, char ** argv)
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
-    size_t nb_pixels = source_image.cols * source_image.rows;
 
     size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
