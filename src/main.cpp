@@ -109,55 +109,65 @@ int main(int argc, char ** argv)
 //--------Difference Image Kernel-------------
 //--------------------------------------------
     //now source image = the greysclae image
+    int image_1D_size = left_image.cols * left_image.rows * sizeof(char)*3;
+    int width = left_image.cols;
 
-    // cl_program difference_image_program;
-    // compile_source(&difference_image_source_path, &difference_image_program, device, context);
+    cl_program difference_image_program;
+    compile_source(&difference_image_source_path, &difference_image_program, device, context);
 
-    // cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
+    cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
 
-    // // 5. Load an image into a buffer
-    // long int output_size = image_1D_size*MAX_DISTANCE; // we will make an image MAX_DISTANCE time bigger than the source image as it will be stored in one array
-    // unsigned char* output_image = malloc(output_size); 
+    // 5. Load an image into a buffer
+    // unsigned char* output_image = (unsigned char*) malloc(output_size);  
+    cv::Mat output_image(left_image.cols, left_image.rows*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?x
+    long int output_size = output_image.cols * output_image.rows * sizeof(char)*3; // we will make an image MAX_DISTANCE time bigger than the source image as it will be stored in one array
+
+    cl_mem left_image_buffer = clCreateBuffer( context,
+                                    CL_MEM_COPY_HOST_PTR,
+                                    image_1D_size,
+                                    (void*)left_image.data, NULL );
+    clSetKernelArg(difference_image_kernel, 0, sizeof(left_image_buffer), (void*) &left_image_buffer);//https://stackoverflow.com/a/22101104
+
+    cl_mem right_image_buffer = clCreateBuffer( context,
+                                    CL_MEM_COPY_HOST_PTR,
+                                    image_1D_size,
+                                    (void*)right_image.data, NULL );
+
+    clSetKernelArg(difference_image_kernel, 1, sizeof(right_image_buffer), (void*) &right_image_buffer);//https://stackoverflow.com/a/22101104
+        
+    cl_mem destination_buffer = clCreateBuffer( context,
+                                    CL_MEM_COPY_HOST_PTR,
+                                    output_size,
+                                    (void*)output_image.data, NULL );
+
+    clSetKernelArg(difference_image_kernel, 2, sizeof(destination_buffer), (void*) &destination_buffer);
     
-    // cl_mem buffer1 = clCreateBuffer( context,
-    //                                 CL_MEM_COPY_HOST_PTR,
-    //                                 image_1D_size,
-    //                                 (void*)source_image.data, NULL );
-    // clSetKernelArg(difference_image_kernel, 0, sizeof(buffer1), (void*) &buffer1);//https://stackoverflow.com/a/22101104
+    clSetKernelArg(difference_image_kernel, 3, sizeof(width), &width);//set width value
+    int max_dist = MAX_DISTANCE;
+    clSetKernelArg(difference_image_kernel, 4, sizeof(max_dist), &max_dist);//set maxDistance value
 
-    // cl_mem buffer2 = clCreateBuffer( context,
-    //                                 CL_MEM_COPY_HOST_PTR,
-    //                                 output_size,
-    //                                 (void*)output_image.data, NULL );
+    // 6. Launch the kernel. Let OpenCL pick the local work size.
 
-    // clSetKernelArg(difference_image_kernel, 0, sizeof(buffer1), (void*) &buffer2);//https://stackoverflow.com/a/22101104
+    size_t global_work_size_image[] = {(size_t) left_image.cols, (size_t) left_image.rows};
+    clEnqueueNDRangeKernel( queue,
+                            difference_image_kernel,
+                            2,
+                            NULL,
+                            global_work_size_image,
+                            NULL,
+                            0,
+                            NULL, NULL);
 
-    // // 6. Launch the kernel. Let OpenCL pick the local work size.
+    clFinish( queue ); // syncing
 
-    // size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
-    // clEnqueueNDRangeKernel( queue,
-    //                         difference_image_kernel,
-    //                         2,
-    //                         NULL,
-    //                         global_work_size_image,
-    //                         NULL,
-    //                         0,
-    //                         NULL, NULL);
+    // 7. Look at the results via synchronous buffer map.
 
-    // clFinish( queue ); // syncing
+    clEnqueueReadBuffer(queue,
+                      destination_buffer,
+                      CL_TRUE,
+                      NULL,
+                      output_size,
+                     (void*)output_image.data, NULL, NULL, NULL );
 
-    // // 7. Look at the results via synchronous buffer map.
-
-    // clEnqueueReadBuffer(queue,
-    //                   buffer,
-    //                   CL_TRUE,
-    //                   NULL,
-    //                   image_1D_size,
-    //                  (void*)source_image.data, NULL, NULL, NULL );
-
-
-
-
-    // free(output_image);
     return 0;
 }
