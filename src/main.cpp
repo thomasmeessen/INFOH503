@@ -13,6 +13,19 @@ using namespace std;
 
 // A simple threshold kernel
 const string source_path = "greyscale.cl";
+void compile_source(const string *source_path, cl_program *program, cl_device_id device, cl_context context){
+    // 4. Perform runtime source compilation, and obtain kernel entry point.
+    std::ifstream source_file(*source_path);
+    std::string source_code(std::istreambuf_iterator<char>(source_file), (std::istreambuf_iterator<char>()));
+    const char* c_string_code = &source_code[0];
+    *program = clCreateProgramWithSource( context,
+                                                    1,
+                                                    (const char **) &c_string_code,
+                                                    NULL, NULL );
+
+    clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
+}
+
 
 int main(int argc, char ** argv)
 {
@@ -42,18 +55,11 @@ int main(int argc, char ** argv)
                                                    device,
                                                    0, NULL );
 
-    // 4. Perform runtime source compilation, and obtain kernel entry point.
-    std::ifstream source_file(source_path);
-    std::string source_code(std::istreambuf_iterator<char>(source_file), (std::istreambuf_iterator<char>()));
-    const char* c_string_code = &source_code[0];
-    cl_program program = clCreateProgramWithSource( context,
-                                                    1,
-                                                    (const char **) &c_string_code,
-                                                    NULL, NULL );
+ 
+    cl_program greyscale_program;
+    compile_source(&source_path, &greyscale_program, device, context);
 
-    clBuildProgram( program, 1, &device, NULL, NULL, NULL );
-
-    cl_kernel kernel = clCreateKernel( program, "memset", NULL );
+    cl_kernel greyscale_kernel = clCreateKernel( greyscale_program, "memset", NULL );
 
     // 5. Load an image into a buffer
     cv::Mat source_image = cv::imread("classroom_l.png", cv::IMREAD_COLOR);
@@ -67,11 +73,11 @@ int main(int argc, char ** argv)
                                     (void*)source_image.data, NULL );
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
+    clSetKernelArg(greyscale_kernel, 0, sizeof(buffer), (void*) &buffer);
 
     size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
-                            kernel,
+                            greyscale_kernel,
                             2,
                             NULL,
                             global_work_size_image,
@@ -79,7 +85,7 @@ int main(int argc, char ** argv)
                             0,
                             NULL, NULL);
 
-    clFinish( queue );
+    clFinish( queue ); // syncing
 
     // 7. Look at the results via synchronous buffer map.
 
@@ -91,11 +97,8 @@ int main(int argc, char ** argv)
                      (void*)source_image.data, NULL, NULL, NULL );
 
 
-    cv::imwrite("post.png", source_image);
-//    int i;
-//
-//    for(i=0; i < nb_pixels; i++)
-//        printf("%d %d\n", i, ptr[i]);
+    cv::imwrite("post_greyscale.png", source_image);
+
 
     return 0;
 }
