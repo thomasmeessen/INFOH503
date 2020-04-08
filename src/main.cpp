@@ -72,5 +72,8 @@ int main(int argc, char ** argv)
     cv::Mat output_image;//(left_image.rows, left_image.cols*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?
     image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
 
+    left_image.release();
+    right_image.release();
+    output_image.release();
     return 0;
 }
