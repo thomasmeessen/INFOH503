@@ -81,6 +81,11 @@ int main(int argc, char ** argv)
                     1,
                     &device, NULL);
 
+    // 2.1 Check if the device tolerate images
+    //cl_bool param_value_image_accepted;
+    //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
+    //cout <<( (param_value_image_accepted == CL_TRUE)? "Device accept image ": "Device do not accept image") << endl;
+
     // 3. Create a context and command queue on that device.
     cl_context context = clCreateContext( NULL,
                                           1,
