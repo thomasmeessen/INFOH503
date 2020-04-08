@@ -15,8 +15,8 @@ using namespace std;
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
-const string left_image_path  = "paper0.png";
-const string right_image_path = "paper1.png";
+const string left_image_path  = "classroom_l.png";
+const string right_image_path = "classroom_r.png";
 
 void compile_source(const string *source_path, cl_program *program, cl_device_id device, cl_context context){
     // 4. Perform runtime source compilation, and obtain kernel entry point.
