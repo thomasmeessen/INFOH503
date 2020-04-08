@@ -10,7 +10,7 @@
 using namespace std;
 
 
-#define MAX_DISTANCE 16 // maximum differnenc in pixel
+#define MAX_DISTANCE 4 // maximum differnenc in pixel
 
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
@@ -110,7 +110,9 @@ int main(int argc, char ** argv)
 //--------------------------------------------
     //now source image = the greysclae image
     int image_1D_size = left_image.cols * left_image.rows * sizeof(char)*3;
-    int width = left_image.cols;
+    int original_width = left_image.cols;
+    int original_height = left_image.rows;
+    int max_dist = MAX_DISTANCE;
 
     cl_program difference_image_program;
     compile_source(&difference_image_source_path, &difference_image_program, device, context);
@@ -119,8 +121,8 @@ int main(int argc, char ** argv)
 
     // 5. Load an image into a buffer
     // unsigned char* output_image = (unsigned char*) malloc(output_size);  
-    cv::Mat output_image(left_image.cols, left_image.rows*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?x
-    long int output_size = output_image.cols * output_image.rows * sizeof(char)*3; // we will make an image MAX_DISTANCE time bigger than the source image as it will be stored in one array
+    cv::Mat output_image(left_image.rows, left_image.cols*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?
+    int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
 
     cl_mem left_image_buffer = clCreateBuffer( context,
                                     CL_MEM_COPY_HOST_PTR,
@@ -141,10 +143,10 @@ int main(int argc, char ** argv)
                                     (void*)output_image.data, NULL );
 
     clSetKernelArg(difference_image_kernel, 2, sizeof(destination_buffer), (void*) &destination_buffer);
+    clSetKernelArg(difference_image_kernel, 3, sizeof(original_height), &original_height);//set width value
     
-    clSetKernelArg(difference_image_kernel, 3, sizeof(width), &width);//set width value
-    int max_dist = MAX_DISTANCE;
-    clSetKernelArg(difference_image_kernel, 4, sizeof(max_dist), &max_dist);//set maxDistance value
+    clSetKernelArg(difference_image_kernel, 4, sizeof(original_width), &original_width);//set width value
+    clSetKernelArg(difference_image_kernel, 5, sizeof(max_dist), &max_dist);//set maxDistance value
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
 
@@ -161,13 +163,12 @@ int main(int argc, char ** argv)
     clFinish( queue ); // syncing
 
     // 7. Look at the results via synchronous buffer map.
-
     clEnqueueReadBuffer(queue,
                       destination_buffer,
                       CL_TRUE,
                       NULL,
                       output_size,
                      (void*)output_image.data, NULL, NULL, NULL );
-
+    cv::imwrite("test.png", output_image);
     return 0;
 }
