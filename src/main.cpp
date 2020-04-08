@@ -10,7 +10,7 @@
 using namespace std;
 
 
-#define MAX_DISTANCE 4 // maximum differnenc in pixel
+#define MAX_DISTANCE 16 // maximum differnenc in pixel
 
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
