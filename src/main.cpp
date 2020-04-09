@@ -54,23 +54,23 @@ int main(int argc, char ** argv)
     cl_kernel greyscale_kernel = clCreateKernel( greyscale_program, "memset", NULL );
    
    
-    cv::Mat left_image;
-    to_greyscale(&left_image_path , left_image , context, greyscale_kernel, queue, false);
-    cv::Mat right_image;
-    to_greyscale(&right_image_path, right_image, context, greyscale_kernel, queue, false);
+    cv::Mat left_image = to_greyscale(left_image_path, context, greyscale_kernel, queue, true);
+    //cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\grey_dupa.png", left_image);
+   // cv::Mat right_image;
+    //to_greyscale(right_image_path, right_image, context, greyscale_kernel, queue, false);
 
 //--------------------------------------------
 //--------Difference Image Kernel-------------
 //--------------------------------------------
     //now source image = the greysclae image
 
-    cl_program difference_image_program;
+    /*cl_program difference_image_program;
     compile_source(&difference_image_source_path, &difference_image_program, device, context);
 
     cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
 
     cv::Mat output_image;//(left_image.rows, left_image.cols*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
+    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);*/
 
     return 0;
 }

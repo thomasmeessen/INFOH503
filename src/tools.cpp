@@ -15,9 +15,11 @@ void compile_source(const string *source_path, cl_program *program, cl_device_id
     clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
 }
 
-void to_greyscale(const string *image_path, cv::Mat &source_image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
-    source_image = cv::imread(*image_path, cv::IMREAD_COLOR);
+cv::Mat to_greyscale(const string image_path, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
+    cv::Mat source_image = cv::imread(image_path, cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
+
+    cv::Mat output_image = cv::Mat(source_image.rows, source_image.cols, CV_8U);
 
     int image_1D_size = source_image.cols * source_image.rows * sizeof(char)*3;
     cl_mem buffer = clCreateBuffer( context,
@@ -25,8 +27,14 @@ void to_greyscale(const string *image_path, cv::Mat &source_image, cl_context co
                                     image_1D_size,
                                     (void*)source_image.data, NULL );
 
+    cl_mem destination_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size/3,
+        (void*)output_image.data, NULL);
+
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
+    clSetKernelArg(kernel, 1, sizeof(destination_buffer), (void*) &destination_buffer);
 
     size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
@@ -42,19 +50,31 @@ void to_greyscale(const string *image_path, cv::Mat &source_image, cl_context co
 
     // 7. Look at the results via synchronous buffer map.
 
-    clEnqueueReadBuffer(queue,
+    /*clEnqueueReadBuffer(queue,
                       buffer,
                       CL_TRUE,
                       NULL,
                       image_1D_size,
-                     (void*)source_image.data, NULL, NULL, NULL );
+                     (void*)source_image.data, NULL, NULL, NULL );*/
+
+    clEnqueueReadBuffer(queue,
+        destination_buffer,
+        CL_TRUE,
+        NULL,
+        image_1D_size/3,
+        (void*)output_image.data, NULL, NULL, NULL);
+
     
     if(write_to_png){
-        string output = "grey_" + *image_path;
-        cv::imwrite(output, source_image);
+        string output = "grey_" + image_path;
+        std::cout << output;
+        cv::imwrite(output, output_image);
     }
 
+    return output_image;
+
 }
+
 
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
