@@ -15,7 +15,13 @@ void compile_source(const string *source_path, cl_program *program, cl_device_id
     clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
 }
 
-cv::Mat to_greyscale(const string image_path, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
+cv::Mat to_greyscale(const string image_path, cl_context context, cl_device_id device, const string greyscale_source_path, cl_command_queue queue, bool write_to_png){
+
+    cl_program greyscale_program;
+    compile_source(&greyscale_source_path, &greyscale_program, device, context);
+
+    cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
+
     cv::Mat source_image = cv::imread(image_path, cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
 
@@ -33,12 +39,12 @@ cv::Mat to_greyscale(const string image_path, cl_context context, cl_kernel kern
         (void*)output_image.data, NULL);
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
-    clSetKernelArg(kernel, 1, sizeof(destination_buffer), (void*) &destination_buffer);
+    clSetKernelArg(greyscale_kernel, 0, sizeof(buffer), (void*) &buffer);
+    clSetKernelArg(greyscale_kernel, 1, sizeof(destination_buffer), (void*) &destination_buffer);
 
     size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
-                            kernel,
+                            greyscale_kernel,
                             2,
                             NULL,
                             global_work_size_image,
@@ -74,6 +80,77 @@ cv::Mat to_greyscale(const string image_path, cl_context context, cl_kernel kern
     return output_image;
 
 }
+
+
+void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const string guidedFilter_source_path, cl_command_queue queue) {
+
+    cl_program guidedFilter_program;
+    compile_source(&guidedFilter_source_path, &guidedFilter_program, device, context);
+
+    cl_kernel guidedFilter_kernel = clCreateKernel(guidedFilter_program, "memset", NULL);
+
+    int image_1D_size = image.cols * image.rows * sizeof(char);
+    cl_mem buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)image.data, NULL);
+
+    cv::Mat output = cv::Mat(image.rows, image.cols, CV_8U);
+
+    cv::Mat cost = cv::Mat(image.rows, image.cols, CV_8U);
+
+
+    cl_mem output_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)image.data, NULL);
+
+    cl_mem cost_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)image.data, NULL);
+
+    // 6. Launch the kernel. Let OpenCL pick the local work size.
+    clSetKernelArg(guidedFilter_kernel, 0, sizeof(buffer), (void*)&buffer);
+    clSetKernelArg(guidedFilter_kernel, 1, sizeof(output_buffer), (void*)&output_buffer);
+    clSetKernelArg(guidedFilter_kernel, 2, sizeof(cost_buffer), (void*)&cost_buffer);
+
+    size_t global_work_size_image[] = { (size_t)image.cols, (size_t)image.rows };
+    clEnqueueNDRangeKernel(queue,
+        guidedFilter_kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+
+    clFinish(queue); // syncing
+
+    // 7. Look at the results via synchronous buffer map.
+
+    /*clEnqueueReadBuffer(queue,
+                      buffer,
+                      CL_TRUE,
+                      NULL,
+                      image_1D_size,
+                     (void*)source_image.data, NULL, NULL, NULL );*/
+
+    clEnqueueReadBuffer(queue,
+        buffer,
+        CL_TRUE,
+        NULL,
+        image_1D_size,
+        (void*)image.data, NULL, NULL, NULL);
+
+}
+
+
+
+
+
+
+
 
 
 

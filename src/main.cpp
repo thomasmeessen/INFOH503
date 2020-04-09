@@ -15,6 +15,7 @@ using namespace std;
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
+const string guidedFilter_source_path = "guidedFilter.cl";
 const string left_image_path  = "classroom_l.png";
 const string right_image_path = "classroom_r.png";
 
@@ -46,16 +47,12 @@ int main(int argc, char ** argv)
     cl_command_queue queue = clCreateCommandQueue( context,
                                                    device,
                                                    0, NULL );
-
- 
-    cl_program greyscale_program;
-    compile_source(&greyscale_source_path, &greyscale_program, device, context);
-
-    cl_kernel greyscale_kernel = clCreateKernel( greyscale_program, "memset", NULL );
    
    
-    cv::Mat left_image = to_greyscale(left_image_path, context, greyscale_kernel, queue, true);
-    //cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\grey_dupa.png", left_image);
+    cv::Mat left_image = to_greyscale(left_image_path, context, device, greyscale_source_path, queue, true);
+    guidedFilter(left_image, context, device, guidedFilter_source_path, queue);
+
+
    // cv::Mat right_image;
     //to_greyscale(right_image_path, right_image, context, greyscale_kernel, queue, false);
 

@@ -12,8 +12,8 @@ kernel void memset(global uint* dst, global uint* o, global uint* cost) {
         if (x + i >= 0 && x + i < get_global_size(0)) {
             for (int j = -radius; j <= radius; j++) {
                 if (y + j >= 0 && y + j < get_global_size(1)) {
-                    const id1 = ((y + j) * get_global_size(0)) + (x + i);
-                    o[id1] = 0;
+                    //const id1 = ((y + j) * get_global_size(0)) + (x + i);
+                    //o[id1] = 0;
                     good_pixels++;
                 }
             }
