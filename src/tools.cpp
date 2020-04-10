@@ -137,7 +137,7 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
         (void*)output.data, NULL, NULL, NULL);
 
 
-    cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\ssdsq.png", output);
+    cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\ssdsddq.png", output);
 
 }
 
