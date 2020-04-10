@@ -103,12 +103,12 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
     cl_mem output_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)image.data, NULL);
+        (void*)output.data, NULL);
 
     cl_mem cost_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)image.data, NULL);
+        (void*)cost.data, NULL);
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(guidedFilter_kernel, 0, sizeof(buffer), (void*)&buffer);
@@ -129,19 +129,15 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
 
     // 7. Look at the results via synchronous buffer map.
 
-    /*clEnqueueReadBuffer(queue,
-                      buffer,
-                      CL_TRUE,
-                      NULL,
-                      image_1D_size,
-                     (void*)source_image.data, NULL, NULL, NULL );*/
-
     clEnqueueReadBuffer(queue,
-        buffer,
+        output_buffer,
         CL_TRUE,
         NULL,
         image_1D_size,
-        (void*)image.data, NULL, NULL, NULL);
+        (void*)output.data, NULL, NULL, NULL);
+
+
+    cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\ssdsq.png", output);
 
 }
 
