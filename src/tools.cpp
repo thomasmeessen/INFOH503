@@ -96,13 +96,6 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
                       output_size,
                       (void*)output_image.data, NULL, NULL, NULL );
 
-    clEnqueueReadBuffer(queue,
-                      input_image_buffer,
-                      CL_TRUE,
-                      NULL,
-                      input_image_1D_size,
-                      (void*)source_image.data, NULL, NULL, NULL );
-
     source_image.release();
     source_image = output_image;
     
@@ -112,6 +105,72 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
     }
 
 }
+
+
+void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
+
+
+    int image_1D_size = image.cols * image.rows * sizeof(char);
+    cl_mem buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)image.data, NULL);
+
+    cv::Mat output = cv::Mat(image.rows, image.cols, CV_8U);
+
+    cv::Mat cost = cv::Mat(image.rows, image.cols, CV_8U);
+
+
+    cl_mem output_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)output.data, NULL);
+
+    cl_mem cost_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        image_1D_size,
+        (void*)cost.data, NULL);
+
+    // 6. Launch the kernel. Let OpenCL pick the local work size.
+    clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
+    clSetKernelArg(kernel, 1, sizeof(output_buffer), (void*)&output_buffer);
+    clSetKernelArg(kernel, 2, sizeof(cost_buffer), (void*)&cost_buffer);
+
+    size_t global_work_size_image[] = { (size_t)image.cols, (size_t)image.rows };
+    clEnqueueNDRangeKernel(queue,
+        kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+
+    clFinish(queue); // syncing
+
+    // 7. Look at the results via synchronous buffer map.
+
+    clEnqueueReadBuffer(queue,
+        output_buffer,
+        CL_TRUE,
+        NULL,
+        image_1D_size,
+        (void*)output.data, NULL, NULL, NULL);
+
+    if(write_to_png){
+        string output_name = "guided_" + *image_path;
+        cv::imwrite(output_name, output);
+    }
+
+}
+
+
+
+
+
+
+
+
 
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
