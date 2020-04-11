@@ -18,6 +18,7 @@ const string difference_image_source_path = "differenceImage.cl";
 const string guidedFilter_source_path = "guidedFilter.cl";
 const string left_image_path  = "classroom_l.png";
 const string right_image_path = "classroom_r.png";
+const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
 
 
 int main(int argc, char ** argv)
@@ -38,6 +39,7 @@ int main(int argc, char ** argv)
     //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
     //cout <<( (param_value_image_accepted == CL_TRUE)? "Device accept image ": "Device do not accept image") << endl;
 
+
     // 3. Create a context and command queue on that device.
     cl_context context = clCreateContext( NULL,
                                           1,
@@ -55,6 +57,10 @@ int main(int argc, char ** argv)
     cl_program guidedFilter_program;
     compile_source(&greyscale_source_path, &guidedFilter_program, device, context);
     cl_kernel guidedFilter_kernel = clCreateKernel( guidedFilter_program, "memset", NULL );
+
+    cl_program cost_by_layer_program;
+    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, device, context);
+    cl_kernel cost_by_layer_kernel = clCreateKernel (cost_by_layer_program, "memset", NULL);
 
     cv::Mat left_image;
     cv::Mat left_image_gray =  to_greyscale_plus_padding(left_image_path, left_image, MAX_DISTANCE ,context, greyscale_kernel, queue, false);
