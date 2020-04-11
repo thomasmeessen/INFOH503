@@ -107,10 +107,12 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
 }
 
 
-void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
+void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
 
+    int width = image.cols - 2*max_distance;
+    int height = image.rows - 2*max_distance;
 
-    int image_1D_size = image.cols * image.rows * sizeof(char);
+    int image_1D_size = image.total() * image.elemSize();
     cl_mem buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
@@ -135,8 +137,10 @@ void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, 
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
     clSetKernelArg(kernel, 1, sizeof(output_buffer), (void*)&output_buffer);
     clSetKernelArg(kernel, 2, sizeof(cost_buffer), (void*)&cost_buffer);
-
-    size_t global_work_size_image[] = { (size_t)image.cols, (size_t)image.rows };
+    clSetKernelArg(kernel, 3, sizeof(width), &width);
+    clSetKernelArg(kernel, 4, sizeof(height),&height);
+    clSetKernelArg(kernel, 5, sizeof(max_distance), &max_distance);
+    size_t global_work_size_image[] = { (size_t)image.cols - 2*max_distance, (size_t)image.rows- 2*max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
     clEnqueueNDRangeKernel(queue,
         kernel,
         2,
