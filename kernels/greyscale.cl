@@ -5,8 +5,10 @@ kernel void memset(   global unsigned char *src, global unsigned char *dst, int 
     const int y = get_global_id(1);
     const int id = x + (y*get_global_size(0));
     unsigned char grey = (src[id*3] + src[id*3+1] + src[id*3+2])/3;
-    int new_width = original_width + 2*max_dist; 
-    int new_id = (x + (y*(get_global_size(0)+2*max_dist)) ) + max_dist + max_dist*new_width;
+    int new_width = original_width + 2*max_dist;
+    int new_x = x + max_dist ;
+    int new_y = y + max_dist;
+    int new_id = new_x + (new_y * new_width ) ;
     dst[new_id]   = grey;  // R
 
     if(x==0){//first column, every pixel on the left has the same color
