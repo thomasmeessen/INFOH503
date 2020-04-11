@@ -48,9 +48,20 @@ int main(int argc, char ** argv)
                                                    device,
                                                    0, NULL );
    
-   
-    cv::Mat left_image = to_greyscale(left_image_path, context, device, greyscale_source_path, queue, true);
-    guidedFilter(left_image, context, device, guidedFilter_source_path, queue);
+    cl_program greyscale_program;
+    compile_source(&greyscale_source_path, &greyscale_program, device, context);
+    cl_kernel greyscale_kernel = clCreateKernel( greyscale_program, "memset", NULL );
+
+    cl_program guidedFilter_program;
+    compile_source(&greyscale_source_path, &guidedFilter_program, device, context);
+    cl_kernel guidedFilter_kernel = clCreateKernel( guidedFilter_program, "memset", NULL );
+
+    cv::Mat left_image;
+    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, false);
+    cv::Mat right_image;
+    to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
+
+    guidedFilter(&left_image_path ,left_image, context, guidedFilter_kernel, queue, true);
 
 
    // cv::Mat right_image;
@@ -59,15 +70,18 @@ int main(int argc, char ** argv)
 //--------------------------------------------
 //--------Difference Image Kernel-------------
 //--------------------------------------------
-    //now source image = the greysclae image
+    //now source image == the greysclae image
 
-    /*cl_program difference_image_program;
+    cl_program difference_image_program;
     compile_source(&difference_image_source_path, &difference_image_program, device, context);
 
     cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
 
-    cv::Mat output_image;//(left_image.rows, left_image.cols*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);*/
+    cv::Mat output_image; // each image will be next to each other?
+    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, true);
 
+    left_image.release();
+    right_image.release();
+    output_image.release();
     return 0;
 }

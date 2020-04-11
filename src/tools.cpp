@@ -1,6 +1,34 @@
 #include <string>
+#include <iostream>
 
 using namespace std;
+
+void show_build_error(const string *source_path, cl_program *program, cl_device_id device){
+    char *buff_error;
+    cl_int errcode;
+    size_t build_log_len;
+    errcode = clGetProgramBuildInfo(*program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_len);
+    if (errcode) {
+        printf("clGetProgramBuildInfo failed at line %d\n", __LINE__);
+        exit(-1);
+    }
+        buff_error = (char*) malloc(build_log_len);
+    if (!buff_error) {
+        printf("malloc failed at line %d\n", __LINE__);
+        exit(-2);
+    }
+
+    errcode = clGetProgramBuildInfo(*program, device, CL_PROGRAM_BUILD_LOG, build_log_len, buff_error, NULL);
+    if (errcode) {
+        printf("clGetProgramBuildInfo failed at line %d\n", __LINE__);
+        exit(-3);
+    }
+
+    fprintf(stderr,"Build log: \n%s\n", buff_error); //Be careful with  the fprint
+    free(buff_error);
+    fprintf(stderr,"clBuildProgram failed\n");
+    exit(EXIT_FAILURE);
+}
 
 void compile_source(const string *source_path, cl_program *program, cl_device_id device, cl_context context){
     // 4. Perform runtime source compilation, and obtain kernel entry point.
@@ -12,39 +40,45 @@ void compile_source(const string *source_path, cl_program *program, cl_device_id
                                                     (const char **) &c_string_code,
                                                     NULL, NULL );
 
-    clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
+    cl_int result = clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
+    if(result!= CL_SUCCESS){ //https://stackoverflow.com/a/29813956
+        //  if error while building the kernel we print it
+        cout << "Error while building \""<<*source_path << "\""  << endl;
+    show_build_error(source_path, program, device);
+    }
 }
 
-cv::Mat to_greyscale(const string image_path, cl_context context, cl_device_id device, const string greyscale_source_path, cl_command_queue queue, bool write_to_png){
-
-    cl_program greyscale_program;
-    compile_source(&greyscale_source_path, &greyscale_program, device, context);
-
-    cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
-
-    cv::Mat source_image = cv::imread(image_path, cv::IMREAD_COLOR);
+void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
+    //put a picture to greyscale and add padding around it.
+    source_image = cv::imread(*image_path, cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
-
-    cv::Mat output_image = cv::Mat(source_image.rows, source_image.cols, CV_8U);
-
-    int image_1D_size = source_image.cols * source_image.rows * sizeof(char)*3;
-    cl_mem buffer = clCreateBuffer( context,
+    // + 2* max_distance because will had max_distance column/row on the left/top and max_distance column/row to the right/bottom.
+    cv::Mat output_image = cv::Mat(source_image.rows+ 2*max_distance, source_image.cols + 2*max_distance, CV_8U) ;
+    
+    int input_image_1D_size = source_image.total() * source_image.elemSize();
+    cl_mem input_image_buffer = clCreateBuffer( context,
                                     CL_MEM_COPY_HOST_PTR,
-                                    image_1D_size,
+                                    input_image_1D_size,
                                     (void*)source_image.data, NULL );
 
-    cl_mem destination_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        image_1D_size/3,
-        (void*)output_image.data, NULL);
+    clSetKernelArg(kernel, 0, sizeof(input_image_buffer), (void*) &input_image_buffer);
 
-    // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(greyscale_kernel, 0, sizeof(buffer), (void*) &buffer);
-    clSetKernelArg(greyscale_kernel, 1, sizeof(destination_buffer), (void*) &destination_buffer);
+    int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
+    cl_mem output_image_buffer = clCreateBuffer( context,
+                                    CL_MEM_COPY_HOST_PTR,
+                                    output_size,
+                                    (void*)output_image.data, NULL );
+
+    clSetKernelArg(kernel, 1, sizeof(output_image_buffer), (void*) &output_image_buffer);
+    int width = source_image.cols;
+    int height = source_image.rows;
+    clSetKernelArg(kernel, 2, sizeof(width), &width);
+    clSetKernelArg(kernel, 3, sizeof(height),&height);
+    clSetKernelArg(kernel, 4, sizeof(max_distance), &max_distance);
 
     size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
     clEnqueueNDRangeKernel( queue,
-                            greyscale_kernel,
+                            kernel,
                             2,
                             NULL,
                             global_work_size_image,
@@ -55,39 +89,26 @@ cv::Mat to_greyscale(const string image_path, cl_context context, cl_device_id d
     clFinish( queue ); // syncing
 
     // 7. Look at the results via synchronous buffer map.
-
-    /*clEnqueueReadBuffer(queue,
-                      buffer,
+    clEnqueueReadBuffer(queue,
+                      output_image_buffer,
                       CL_TRUE,
                       NULL,
-                      image_1D_size,
-                     (void*)source_image.data, NULL, NULL, NULL );*/
+                      output_size,
+                      (void*)output_image.data, NULL, NULL, NULL );
 
-    clEnqueueReadBuffer(queue,
-        destination_buffer,
-        CL_TRUE,
-        NULL,
-        image_1D_size/3,
-        (void*)output_image.data, NULL, NULL, NULL);
-
+    source_image.release();
+    source_image = output_image;
     
     if(write_to_png){
-        string output = "grey_" + image_path;
-        std::cout << output;
+        string output = "grey_" + *image_path;
         cv::imwrite(output, output_image);
     }
-
-    return output_image;
 
 }
 
 
-void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const string guidedFilter_source_path, cl_command_queue queue) {
+void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
 
-    cl_program guidedFilter_program;
-    compile_source(&guidedFilter_source_path, &guidedFilter_program, device, context);
-
-    cl_kernel guidedFilter_kernel = clCreateKernel(guidedFilter_program, "memset", NULL);
 
     int image_1D_size = image.cols * image.rows * sizeof(char);
     cl_mem buffer = clCreateBuffer(context,
@@ -111,13 +132,13 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
         (void*)cost.data, NULL);
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(guidedFilter_kernel, 0, sizeof(buffer), (void*)&buffer);
-    clSetKernelArg(guidedFilter_kernel, 1, sizeof(output_buffer), (void*)&output_buffer);
-    clSetKernelArg(guidedFilter_kernel, 2, sizeof(cost_buffer), (void*)&cost_buffer);
+    clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
+    clSetKernelArg(kernel, 1, sizeof(output_buffer), (void*)&output_buffer);
+    clSetKernelArg(kernel, 2, sizeof(cost_buffer), (void*)&cost_buffer);
 
     size_t global_work_size_image[] = { (size_t)image.cols, (size_t)image.rows };
     clEnqueueNDRangeKernel(queue,
-        guidedFilter_kernel,
+        kernel,
         2,
         NULL,
         global_work_size_image,
@@ -136,8 +157,10 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
         image_1D_size,
         (void*)output.data, NULL, NULL, NULL);
 
-
-    cv::imwrite("C:\\Users\\piotr\\Desktop\\INFOH503\\resources\\ssdsddq.png", output);
+    if(write_to_png){
+        string output_name = "guided_" + *image_path;
+        cv::imwrite(output_name, output);
+    }
 
 }
 
@@ -152,10 +175,10 @@ void guidedFilter(cv::Mat& image, cl_context context, cl_device_id device, const
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
     int image_1D_size = left_image.cols * left_image.rows * sizeof(char)*3;
-    int original_width = left_image.cols;
-    int original_height = left_image.rows;
+    int original_width = left_image.cols - 2*max_distance; // cause left_image is the original image + the pading
+    int original_height = left_image.rows - 2*max_distance;
 
-    output_image = cv::Mat(left_image.rows, left_image.cols*max_distance, CV_8U) ;   // each image will be next to each other?
+    output_image = cv::Mat((original_height + 2*max_distance), (original_width+2*max_distance)*max_distance, CV_8U) ;   // each image will be next to each other and we add padding to it
     
     int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
 
@@ -185,7 +208,7 @@ void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
 
-    size_t global_work_size_image[] = {(size_t) left_image.cols, (size_t) left_image.rows};
+    size_t global_work_size_image[] = {(size_t) original_width, (size_t) original_height};
     clEnqueueNDRangeKernel( queue,
                             kernel,
                             2,
