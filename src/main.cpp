@@ -15,8 +15,8 @@ using namespace std;
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
-const string left_image_path  = "classroom_l.png";
-const string right_image_path = "classroom_r.png";
+const string left_image_path  = "paper0.png";
+const string right_image_path = "paper1.png";
 
 
 int main(int argc, char ** argv)
@@ -55,14 +55,14 @@ int main(int argc, char ** argv)
    
    
     cv::Mat left_image;
-    to_greyscale(&left_image_path , left_image , context, greyscale_kernel, queue, false);
+    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, false);
     cv::Mat right_image;
-    to_greyscale(&right_image_path, right_image, context, greyscale_kernel, queue, false);
+    to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
 
 //--------------------------------------------
 //--------Difference Image Kernel-------------
 //--------------------------------------------
-    //now source image = the greysclae image
+    //now source image == the greysclae image
 
     cl_program difference_image_program;
     compile_source(&difference_image_source_path, &difference_image_program, device, context);
@@ -70,7 +70,7 @@ int main(int argc, char ** argv)
     cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
 
     cv::Mat output_image;//(left_image.rows, left_image.cols*MAX_DISTANCE, CV_8U) ;   // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
+    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, true);
 
     left_image.release();
     right_image.release();

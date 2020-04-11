@@ -2,6 +2,7 @@
 #include <iostream>
 
 using namespace std;
+
 void show_build_error(const string *source_path, cl_program *program, cl_device_id device){
     char *buff_error;
     cl_int errcode;
@@ -42,7 +43,7 @@ void compile_source(const string *source_path, cl_program *program, cl_device_id
     cl_int result = clBuildProgram( *program, 1, &device, NULL, NULL, NULL );
     if(result!= CL_SUCCESS){ //https://stackoverflow.com/a/29813956
         //  if error while building the kernel we print it
-        cout << "Error while building \""<<*source_path << "\"" : << endl;
+        cout << "Error while building \""<<*source_path << "\""  << endl;
     show_build_error(source_path, program, device);
     }
 }
@@ -115,10 +116,10 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
     int image_1D_size = left_image.cols * left_image.rows * sizeof(char)*3;
-    int original_width = left_image.cols - 2*max_distance;
-    int original_height = left_image.rows-2*max_distance;
+    int original_width = left_image.cols - 2*max_distance; // cause left_image is the original image + the pading
+    int original_height = left_image.rows - 2*max_distance;
 
-    output_image = cv::Mat(original_height, original_width*max_distance, CV_8U) ;   // each image will be next to each other?
+    output_image = cv::Mat((original_height + 2*max_distance), (original_width+2*max_distance)*max_distance, CV_8U) ;   // each image will be next to each other and we add padding to it
     
     int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
 
