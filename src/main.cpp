@@ -2,17 +2,23 @@
 #include <CL/cl.h>
 #include <iostream>
 #include <vector>
-#include <string>
 #include <fstream>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include "tools.cpp"
 
 using namespace std;
 
 
+#define MAX_DISTANCE 16 // maximum differnenc in pixel
 
 // A simple threshold kernel
-const string source_path = "greyscale.cl";
+const string greyscale_source_path = "greyscale.cl";
+const string difference_image_source_path = "differenceImage.cl";
+const string guidedFilter_source_path = "guidedFilter.cl";
+const string left_image_path  = "classroom_l.png";
+const string right_image_path = "classroom_r.png";
+
 
 int main(int argc, char ** argv)
 {
@@ -27,6 +33,11 @@ int main(int argc, char ** argv)
                     1,
                     &device, NULL);
 
+    // 2.1 Check if the device tolerate images
+    //cl_bool param_value_image_accepted;
+    //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
+    //cout <<( (param_value_image_accepted == CL_TRUE)? "Device accept image ": "Device do not accept image") << endl;
+
     // 3. Create a context and command queue on that device.
     cl_context context = clCreateContext( NULL,
                                           1,
@@ -36,58 +47,41 @@ int main(int argc, char ** argv)
     cl_command_queue queue = clCreateCommandQueue( context,
                                                    device,
                                                    0, NULL );
+   
+    cl_program greyscale_program;
+    compile_source(&greyscale_source_path, &greyscale_program, device, context);
+    cl_kernel greyscale_kernel = clCreateKernel( greyscale_program, "memset", NULL );
 
-    // 4. Perform runtime source compilation, and obtain kernel entry point.
-    std::ifstream source_file(source_path);
-    std::string source_code(std::istreambuf_iterator<char>(source_file), (std::istreambuf_iterator<char>()));
-    const char* c_string_code = &source_code[0];
-    cl_program program = clCreateProgramWithSource( context,
-                                                    1,
-                                                    (const char **) &c_string_code,
-                                                    NULL, NULL );
+    cl_program guidedFilter_program;
+    compile_source(&greyscale_source_path, &guidedFilter_program, device, context);
+    cl_kernel guidedFilter_kernel = clCreateKernel( guidedFilter_program, "memset", NULL );
 
-    clBuildProgram( program, 1, &device, NULL, NULL, NULL );
+    cv::Mat left_image;
+    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, false);
+    cv::Mat right_image;
+    to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
 
-    cl_kernel kernel = clCreateKernel( program, "memset", NULL );
-
-    // 5. Load an image into a buffer
-    cv::Mat source_image = cv::imread("paper0.png", cv::IMREAD_COLOR);
-    source_image.convertTo(source_image, CV_8U);  // for greyscale
-
-    cv::imwrite("pre.png", source_image);
-    int image_1D_size = source_image.cols * source_image.rows * sizeof(char)*3;
-    cl_mem buffer = clCreateBuffer( context,
-                                    CL_MEM_COPY_HOST_PTR,
-                                    image_1D_size,
-                                    (void*)source_image.data, NULL );
-
-    // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(kernel, 0, sizeof(buffer), (void*) &buffer);
-
-    size_t global_work_size_image[] = {(size_t) source_image.cols, (size_t) source_image.rows};
-    clEnqueueNDRangeKernel( queue,
-                            kernel,
-                            2,
-                            NULL,
-                            global_work_size_image,
-                            NULL,
-                            0,
-                            NULL, NULL);
-
-    clFinish( queue );
-
-    // 7. Look at the results via synchronous buffer map.
-
-    clEnqueueReadBuffer(queue,
-                      buffer,
-                      CL_TRUE,
-                      NULL,
-                      image_1D_size,
-                     (void*)source_image.data, NULL, NULL, NULL );
+    guidedFilter(&left_image_path ,left_image, context, guidedFilter_kernel, queue, true);
 
 
-    cv::imwrite("post.png", source_image);
+   // cv::Mat right_image;
+    //to_greyscale(right_image_path, right_image, context, greyscale_kernel, queue, false);
 
+//--------------------------------------------
+//--------Difference Image Kernel-------------
+//--------------------------------------------
+    //now source image == the greysclae image
 
+    cl_program difference_image_program;
+    compile_source(&difference_image_source_path, &difference_image_program, device, context);
+
+    cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
+
+    cv::Mat output_image; // each image will be next to each other?
+    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, true);
+
+    left_image.release();
+    right_image.release();
+    output_image.release();
     return 0;
 }
