@@ -61,7 +61,8 @@ int main(int argc, char ** argv)
     cv::Mat right_image;
     cv::Mat right_image_gray = to_greyscale_plus_padding(right_image_path, right_image, MAX_DISTANCE, context, greyscale_kernel, queue, true);
 
-    guidedFilter(left_image_path ,left_image_gray, context, guidedFilter_kernel, queue, true);
+    //guidedFilter(left_image_path ,left_image_gray, context, guidedFilter_kernel, queue, false);
+    //guidedFilter(right_image_path ,right_image_gray, context, guidedFilter_kernel, queue, false);
 
 
    // cv::Mat right_image;
@@ -78,7 +79,7 @@ int main(int argc, char ** argv)
     cl_kernel difference_image_kernel = clCreateKernel( difference_image_program, "memset", NULL );
 
     cv::Mat output_image; // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, true);
+    image_difference(left_image_gray, right_image_gray, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, true);
 
     left_image.release();
     right_image.release();

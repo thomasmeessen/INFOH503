@@ -109,7 +109,7 @@ cv::Mat to_greyscale_plus_padding(const string image_path, cv::Mat &source_image
 }
 
 
-void guidedFilter(const string image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
+void guidedFilter(const string image_path, cv::Mat &image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
 
 
     int image_1D_size = image.cols * image.rows * sizeof(char);
@@ -169,7 +169,7 @@ void guidedFilter(const string image_path, cv::Mat& image, cl_context context, c
 
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
-    int image_1D_size = left_image.cols * left_image.rows * sizeof(char)*3;
+    int image_1D_size = left_image.cols * left_image.rows * sizeof(char);
     int original_width = left_image.cols - 2*max_distance; // cause left_image is the original image + the pading
     int original_height = left_image.rows - 2*max_distance;
 
