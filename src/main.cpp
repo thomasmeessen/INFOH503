@@ -68,22 +68,73 @@ int main(int argc, char** argv)
     to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
     guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, queue, true);
 
+    //--------------------------------------------
+    // Layer cost computation
+    int disparity_test =  1;
+    int padding_size = MAX_DISTANCE;
+    int number_rows_img = left_image.rows;
+    int number_cols_img = left_image.cols;
+    int channel_for_left = 0;
+    int channel_for_right = 1;
+    float alpha_weight = 0.5;
 
- //--------------------------------------------
- //--------Difference Image Kernel-------------
- //--------------------------------------------
-     //now source image == the greysclae image
+    // - Padding
+    cv::Rect extract_zone (padding_size, padding_size, number_cols_img, number_rows_img);
+    cv::Mat left_image_padded = cv::Mat::zeros(left_image.rows + 2*padding_size, left_image.cols + 2 * padding_size, CV_8UC1);
+    left_image.copyTo(left_image_padded(extract_zone));
+    cv::Mat right_image_padded  = cv::Mat::zeros(left_image.rows + 2*padding_size, left_image.cols + 2 * padding_size, CV_8UC1);
+    right_image.copyTo(right_image_padded(extract_zone));
+    cv::Mat output_layer_cost = cv::Mat::zeros(left_image.size(), CV_32FC1); // float
 
-    cl_program difference_image_program;
-    compile_source(&difference_image_source_path, &difference_image_program, device, context);
+    // - Merging into a single matrix with entrelacement
+    cv::Mat source_images_padded;
+    cv::Mat temp_array[2]  = {left_image_padded, right_image_padded};
+    cv::merge(temp_array, 2, source_images_padded);
 
-    cl_kernel difference_image_kernel = clCreateKernel(difference_image_program, "memset", NULL);
-
-    cv::Mat output_image; // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
+    // - Allocating the buffers
+    cl_mem cost_input_buffer = clCreateBuffer(context,
+                                          CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                          source_images_padded.total() * source_images_padded.elemSize(),
+                                          (void*)source_images_padded.data, NULL);
+    cl_mem cost_output_buffer = clCreateBuffer(context,
+                                        CL_MEM_WRITE_ONLY,
+                                        output_layer_cost.total() * output_layer_cost.elemSize(),
+                                        NULL, NULL);
+    // - Passing arguments to the kernel
+    clSetKernelArg(cost_by_layer_kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 1, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 2, sizeof(padding_size), (void*)&padding_size);
+    clSetKernelArg(cost_by_layer_kernel, 3, sizeof(disparity_test), (void*)&disparity_test);
+    clSetKernelArg(cost_by_layer_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
+    // - Enqueuing kernel
+    size_t global_work_size_cost_layer[] = {right_image.total() };
+    clEnqueueNDRangeKernel(queue,
+                           cost_by_layer_kernel,
+                           2,
+                           NULL,
+                           global_work_size_cost_layer,
+                           NULL,
+                           0,
+                           NULL, NULL);
+    // - Waiting end execution
+    clFinish(queue);
+    cout<<"dinisf"<<endl;
+//
+//    //--------------------------------------------
+//    //--------Difference Image Kernel-------------
+//    //--------------------------------------------
+//    //now source image == the greysclae image
+//
+//    cl_program difference_image_program;
+//    compile_source(&difference_image_source_path, &difference_image_program, device, context);
+//
+//    cl_kernel difference_image_kernel = clCreateKernel(difference_image_program, "memset", NULL);
+//
+//    cv::Mat output_image; // each image will be next to each other?
+//    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
 
     left_image.release();
     right_image.release();
-    output_image.release();
+//    output_image.release();
     return 0;
 }
