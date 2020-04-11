@@ -53,11 +53,11 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
     source_image = cv::imread(*image_path, cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
     // + 2* max_distance because will had max_distance column/row on the left/top and max_distance column/row to the right/bottom.
-    cv::Mat output_image = cv::Mat(source_image.rows+ 2*max_distance, source_image.cols + 2*max_distance, CV_8U) ;
+    cv::Mat output_image = cv::Mat(source_image.rows+ 2*max_distance, source_image.cols + 2*max_distance, CV_8UC1) ;
     
     int input_image_1D_size = source_image.total() * source_image.elemSize();
     cl_mem input_image_buffer = clCreateBuffer( context,
-                                    CL_MEM_COPY_HOST_PTR,
+                                    CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
                                     input_image_1D_size,
                                     (void*)source_image.data, NULL );
 
@@ -65,7 +65,7 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
 
     int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
     cl_mem output_image_buffer = clCreateBuffer( context,
-                                    CL_MEM_COPY_HOST_PTR,
+                                    CL_MEM_COPY_HOST_PTR | CL_MEM_WRITE_ONLY,
                                     output_size,
                                     (void*)output_image.data, NULL );
 
