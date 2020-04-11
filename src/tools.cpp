@@ -48,9 +48,9 @@ void compile_source(const string *source_path, cl_program *program, cl_device_id
     }
 }
 
-void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
+cv::Mat to_greyscale_plus_padding(const string image_path, cv::Mat &source_image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
     //put a picture to greyscale and add padding around it.
-    source_image = cv::imread(*image_path, cv::IMREAD_COLOR);
+    source_image = cv::imread(image_path, cv::IMREAD_COLOR);
     source_image.convertTo(source_image, CV_8U);  // for greyscale
     // + 2* max_distance because will had max_distance column/row on the left/top and max_distance column/row to the right/bottom.
     cv::Mat output_image = cv::Mat(source_image.rows+ 2*max_distance, source_image.cols + 2*max_distance, CV_8U) ;
@@ -96,18 +96,20 @@ void to_greyscale_plus_padding(const string *image_path, cv::Mat &source_image, 
                       output_size,
                       (void*)output_image.data, NULL, NULL, NULL );
 
-    source_image.release();
-    source_image = output_image;
+    //source_image.release();
+    //source_image = output_image;
+
     
     if(write_to_png){
-        string output = "grey_" + *image_path;
+        string output = "grey_" + image_path;
         cv::imwrite(output, output_image);
     }
+    return output_image;
 
 }
 
 
-void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
+void guidedFilter(const string image_path, cv::Mat& image, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
 
 
     int image_1D_size = image.cols * image.rows * sizeof(char);
@@ -158,19 +160,12 @@ void guidedFilter(const string *image_path, cv::Mat& image, cl_context context, 
         (void*)output.data, NULL, NULL, NULL);
 
     if(write_to_png){
-        string output_name = "guided_" + *image_path;
+        string output_name = "guided_" + image_path;
         cv::imwrite(output_name, output);
     }
 
+
 }
-
-
-
-
-
-
-
-
 
 
 void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output_image,int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png){
@@ -186,12 +181,13 @@ void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output
                                     CL_MEM_COPY_HOST_PTR,
                                     image_1D_size,
                                     (void*)left_image.data, NULL );
+
     clSetKernelArg(kernel, 0, sizeof(left_image_buffer), (void*) &left_image_buffer);//https://stackoverflow.com/a/22101104
 
     cl_mem right_image_buffer = clCreateBuffer( context,
                                     CL_MEM_COPY_HOST_PTR,
                                     image_1D_size,
-                                    (void*)right_image.data, NULL );
+                                    (void*)left_image.data, NULL );
 
     clSetKernelArg(kernel, 1, sizeof(right_image_buffer), (void*) &right_image_buffer);//https://stackoverflow.com/a/22101104
         
@@ -227,6 +223,7 @@ void image_difference(cv::Mat &left_image, cv::Mat &right_image, cv::Mat &output
                       NULL,
                       output_size,
                      (void*)output_image.data, NULL, NULL, NULL );
+
     if(write_to_png){
         cv::imwrite("img_diff.png", output_image);
     }                 

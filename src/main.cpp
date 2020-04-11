@@ -57,11 +57,11 @@ int main(int argc, char ** argv)
     cl_kernel guidedFilter_kernel = clCreateKernel( guidedFilter_program, "memset", NULL );
 
     cv::Mat left_image;
-    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, false);
+    cv::Mat left_image_gray =  to_greyscale_plus_padding(left_image_path, left_image, MAX_DISTANCE ,context, greyscale_kernel, queue, false);
     cv::Mat right_image;
-    to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
+    cv::Mat right_image_gray = to_greyscale_plus_padding(right_image_path, right_image, MAX_DISTANCE, context, greyscale_kernel, queue, true);
 
-    guidedFilter(&left_image_path ,left_image, context, guidedFilter_kernel, queue, true);
+    guidedFilter(left_image_path ,left_image_gray, context, guidedFilter_kernel, queue, true);
 
 
    // cv::Mat right_image;
