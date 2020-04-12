@@ -236,3 +236,163 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
     }
 
 }
+
+struct opencl_stuff {
+    cl_device_id device;
+    cl_context context;
+    cl_command_queue queue;
+};
+
+void image_padding (cv::Mat image, cv::Mat &dest, int padding_size)
+{
+    cv::Rect extract_zone (padding_size, padding_size, image.cols, image.rows);
+    cv::Mat image_padded = cv::Mat::zeros(image.rows + 2*padding_size, image.cols + 2 * padding_size, image.type());
+    image.copyTo(image_padded(extract_zone));
+    dest = image_padded;
+}
+
+void cost_by_layer_isolated(string path_image_left, string path_image_right, int disparity, cl_device_id device , cl_context context, cl_command_queue queue) {
+
+    const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
+    // - Kernel Compilation
+    cl_program cost_by_layer_program;
+    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, device, context);
+    cl_kernel cost_by_layer_kernel = clCreateKernel (cost_by_layer_program, "memset", NULL);
+
+    // - Image Loading
+    cv::Mat left_source_image = cv::imread(path_image_left, cv::IMREAD_GRAYSCALE);
+    cv::Mat right_source_image = cv::imread(path_image_right, cv::IMREAD_GRAYSCALE);
+
+    // - Padding
+    int padding_size = disparity;
+
+    float alpha_weight = 0.5;
+
+    cv::Mat left_image_padded;
+    image_padding(left_source_image,left_image_padded, padding_size);
+    cv::Mat right_image_padded;
+    image_padding(right_source_image, right_image_padded, padding_size);
+    cv::Mat output_layer_cost = cv::Mat::zeros(right_source_image.size(), CV_32FC1); // float
+
+    // - Merging into a single matrix with entrelacement
+    cv::Mat source_images_padded;
+    cv::Mat temp_array[2]  = {left_image_padded, right_image_padded};
+    cv::merge(temp_array, 2, source_images_padded);
+
+    // - Allocating the buffers
+    cl_mem cost_input_buffer = clCreateBuffer(context,
+                                              CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                              source_images_padded.total() * source_images_padded.elemSize(),
+                                              (void*)source_images_padded.data, NULL);
+    cl_mem cost_output_buffer = clCreateBuffer(context,
+                                               CL_MEM_WRITE_ONLY,
+                                               output_layer_cost.total() * output_layer_cost.elemSize(),
+                                               NULL, NULL);
+    // - Passing arguments to the kernel
+    clSetKernelArg(cost_by_layer_kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 1, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 2, sizeof(padding_size), (void*)&padding_size);
+    clSetKernelArg(cost_by_layer_kernel, 3, sizeof(disparity), (void*)&disparity);
+    clSetKernelArg(cost_by_layer_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
+    // - Enqueuing kernel
+    size_t global_work_size_cost_layer[] = {(size_t)right_source_image.cols , (size_t) right_source_image.rows };
+    clEnqueueNDRangeKernel(queue,
+                           cost_by_layer_kernel,
+                           2,
+                           NULL,
+                           global_work_size_cost_layer,
+                           NULL,
+                           0,
+                           NULL, NULL);
+    // - Waiting end execution
+
+    clFinish(queue);
+
+    // - Reading Results
+    clEnqueueReadBuffer(queue,
+                        cost_output_buffer,
+                        CL_TRUE,
+                        NULL,
+                        output_layer_cost.total() * output_layer_cost.elemSize(),
+                        (void*)output_layer_cost.data, NULL, NULL, NULL);
+    string output_name = "cost_" + path_image_left;
+    cv::imwrite(output_name, output_layer_cost);
+}
+
+void cost_by_layer_isolated(string path_image_left, string path_image_right, int disparity, opencl_stuff ocl_stuff){
+    cost_by_layer_isolated(path_image_left, path_image_right, disparity, ocl_stuff.device, ocl_stuff.context, ocl_stuff.queue);
+}
+
+void cost_by_layer_integrated (const string& path_image_left, const string &path_image_right, int disparity, opencl_stuff ocl_stuff){
+    const string cost_by_layer_source_path = "cost_layer_integrated_grayscale.cl";
+    // - Kernel Compilation
+    cl_program cost_by_layer_program;
+    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, ocl_stuff.device, ocl_stuff.context);
+    cl_kernel cost_by_layer_kernel = clCreateKernel (cost_by_layer_program, "memset", NULL);
+
+    // - Image Loading
+    cv::Mat left_source_image = cv::imread(path_image_left, cv::IMREAD_COLOR);
+    cv::Mat right_source_image = cv::imread(path_image_right, cv::IMREAD_COLOR);
+    assert(left_source_image.type() == CV_8UC3 && right_source_image.type() == CV_8UC3);
+
+    // - Image Padding
+    int padding_size = disparity;
+    cv::Mat left_image_padded;
+    image_padding(left_source_image,left_image_padded, padding_size);
+    cv::Mat right_image_padded;
+    image_padding(right_source_image, right_image_padded, padding_size);
+    cv::Mat output_layer_cost = cv::Mat::zeros(right_source_image.size(), CV_32FC1); // float
+
+    //- Output allocation
+    cv::Mat result = cv::Mat::zeros(left_source_image.size(), CV_32FC1);
+
+    // - Buffer allocation
+    assert(left_source_image.total() == right_source_image.total());
+    int padded_input_image_1D_size = left_image_padded.total() * left_image_padded.elemSize();
+    cl_mem left_input_image_buffer = clCreateBuffer(ocl_stuff.context,
+                                               CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                                    padded_input_image_1D_size,
+                                               (void*)left_source_image.data, NULL);
+    cl_mem right_input_image_buffer = clCreateBuffer(ocl_stuff.context,
+                                                    CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                                     padded_input_image_1D_size,
+                                                    (void*)right_source_image.data, NULL);
+    cl_mem output_buffer = clCreateBuffer(ocl_stuff.context,
+                                                     CL_MEM_WRITE_ONLY,
+                                                     result.total() * result.elemSize(),
+                                                     (void*)right_source_image.data, NULL);
+    // - Cost properties
+    float alpha_weight = 0.5;
+
+    // - Passing arguments to the kernel
+    clSetKernelArg(cost_by_layer_kernel, 0, sizeof(left_input_image_buffer), (void*)&left_input_image_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 1, sizeof(right_input_image_buffer), (void*)&right_input_image_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 2, sizeof(output_buffer), (void*)&output_buffer);
+    clSetKernelArg(cost_by_layer_kernel, 3, sizeof(padding_size), (void*)&padding_size);
+    clSetKernelArg(cost_by_layer_kernel, 4, sizeof(disparity), (void*)&disparity);
+    clSetKernelArg(cost_by_layer_kernel, 5, sizeof(alpha_weight), (void*)&alpha_weight);
+
+    // - Executing Kernel
+    // for each pixel - cost
+    size_t global_work_size_cost_layer[] = {(size_t)right_source_image.cols , (size_t) right_source_image.rows };
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+                           cost_by_layer_kernel,
+                           2,
+                           NULL,
+                           global_work_size_cost_layer,
+                           NULL,
+                           0,
+                           NULL, NULL);
+
+    clFinish(ocl_stuff.queue);
+
+    // - Reading Results
+    clEnqueueReadBuffer(ocl_stuff.queue,
+                        output_buffer,
+                        CL_TRUE,
+                        NULL,
+                        result.total() * result.elemSize(),
+                        (void*)result.data, NULL, NULL, NULL);
+    string output_name = "cost_integrated_" + path_image_left;
+    cv::imwrite(output_name, result);
+}
