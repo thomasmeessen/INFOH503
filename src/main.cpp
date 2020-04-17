@@ -15,7 +15,8 @@ using namespace std;
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
-const string guidedFilter_source_path = "guidedFilter.cl";
+const string guidedFilter_source_path = "guidedFilterStart.cl";
+const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string left_image_path = "classroom_l.png";
 const string right_image_path = "classroom_r.png";
 
@@ -52,15 +53,23 @@ int main(int argc, char** argv)
     compile_source(&greyscale_source_path, &greyscale_program, device, context);
     cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
 
-    cl_program guidedFilter_program;
-    compile_source(&guidedFilter_source_path, &guidedFilter_program, device, context);
-    cl_kernel guidedFilter_kernel = clCreateKernel( guidedFilter_program, "memset", NULL );
+    cl_program guidedFilterStart_program;
+    compile_source(&guidedFilter_source_path, &guidedFilterStart_program, device, context);
+    cl_kernel guidedFilter_kernel = clCreateKernel(guidedFilterStart_program, "memset", NULL );
+
+
+    cl_program guidedFilterEnd_program;
+    compile_source(&guidedFilterEnd_source_path, &guidedFilterEnd_program, device, context);
+    cl_kernel guidedFilterEnd_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
     cv::Mat right_image;
     to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
-    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, queue, true);
+    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true);
+
+
+
 
 
  //--------------------------------------------
