@@ -19,6 +19,7 @@ const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string left_image_path = "classroom_l.png";
 const string right_image_path = "classroom_r.png";
+const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
 
 
 int main(int argc, char** argv)
@@ -53,6 +54,31 @@ int main(int argc, char** argv)
     compile_source(&greyscale_source_path, &greyscale_program, device, context);
     cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
 
+
+
+
+    cl_program cost_by_layer_program;
+    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, device, context);
+    cl_kernel cost_by_layer_kernel = clCreateKernel(cost_by_layer_program, "memset", NULL);
+
+
+    //--------------------------------------------
+    // Layer cost computation
+    opencl_stuff ocl_stuff;
+    ocl_stuff.device = device;
+    ocl_stuff.context = context;
+    ocl_stuff.queue = queue;
+
+    opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
+    cost_layer.write_img("Cost_for_layer_20.png", ocl_stuff);
+
+
+
+
+    cl_program greyscale_program;
+    compile_source(&greyscale_source_path, &greyscale_program, device, context);
+    cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
+
     cl_program guidedFilterStart_program;
     compile_source(&guidedFilter_source_path, &guidedFilterStart_program, device, context);
     cl_kernel guidedFilter_kernel = clCreateKernel(guidedFilterStart_program, "memset", NULL );
@@ -64,26 +90,9 @@ int main(int argc, char** argv)
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    cv::Mat right_image;
-    to_greyscale_plus_padding(&right_image_path,right_image ,MAX_DISTANCE, context, greyscale_kernel, queue, false);
-    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true);
+    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer.buffer);
 
 
-
-
-
- //--------------------------------------------
- //--------Difference Image Kernel-------------
- //--------------------------------------------
-     //now source image == the greysclae image
-
-    cl_program difference_image_program;
-    compile_source(&difference_image_source_path, &difference_image_program, device, context);
-
-    cl_kernel difference_image_kernel = clCreateKernel(difference_image_program, "memset", NULL);
-
-    cv::Mat output_image; // each image will be next to each other?
-    image_difference(left_image, right_image, output_image, MAX_DISTANCE, context, difference_image_kernel, queue, false);
 
     left_image.release();
     right_image.release();
