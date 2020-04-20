@@ -50,11 +50,6 @@ int main(int argc, char** argv)
         device,
         0, NULL);
 
-    cl_program greyscale_program;
-    compile_source(&greyscale_source_path, &greyscale_program, device, context);
-    cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
-
-
 
 
     cl_program cost_by_layer_program;
@@ -94,8 +89,5 @@ int main(int argc, char** argv)
 
 
 
-    left_image.release();
-    right_image.release();
-    output_image.release();
     return 0;
 }

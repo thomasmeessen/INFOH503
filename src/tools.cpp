@@ -104,16 +104,6 @@ void to_greyscale_plus_padding(const string* image_path, cv::Mat& source_image, 
         cv::imwrite(output, output_image);
     }
 
-<<<<<<< HEAD
-}
-
-
-void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png) {
-
-    int width = image.cols - 2*max_distance;
-    int height = image.rows - 2*max_distance;
-
-=======
 }
 
 
@@ -134,7 +124,6 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
     int width = image.cols - 2*max_distance;
     int height = image.rows - 2*max_distance;
 
->>>>>>> guidedFilter
     int image_1D_size = image.total() * image.elemSize();
     cl_mem buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
@@ -151,7 +140,6 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
 
 
     cl_mem output_a_k_buffer = clCreateBuffer(context,
-<<<<<<< HEAD
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
         (void*)output_a_k.data, NULL);
@@ -159,15 +147,6 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
     cl_mem output_b_k_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-=======
-        CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
-        (void*)output_a_k.data, NULL);
-
-    cl_mem output_b_k_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
->>>>>>> guidedFilter
         (void*)output_b_k.data, NULL);
 
 
@@ -254,14 +233,11 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
         NULL,
         image_1D_size,
         (void*)guidedFilter_image.data, NULL, NULL, NULL);
-<<<<<<< HEAD
-=======
 
     if (write_to_png) {
         string output_name = "guided_test_" + *image_path;
         cv::imwrite(output_name, guidedFilter_image);
     }
->>>>>>> guidedFilter
 
     if (write_to_png) {
         string output_name = "guided_test_" + *image_path;
