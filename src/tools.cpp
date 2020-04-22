@@ -3,6 +3,31 @@
 
 using namespace std;
 
+struct opencl_stuff {
+    cl_device_id device;
+    cl_context context;
+    cl_command_queue queue;
+};
+
+struct opencl_buffer {
+    cl_mem buffer;
+    std::size_t buffer_size;
+    int cols, rows, type;
+
+    void write_img(string path_to_write, opencl_stuff ocl_stuff) {
+        cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
+        clEnqueueReadBuffer(ocl_stuff.queue,
+            buffer,
+            CL_TRUE,
+            NULL,
+            buffer_size,
+            (void*)image_to_write.data, NULL, NULL, NULL);
+
+
+        cv::imwrite(path_to_write, image_to_write);
+    }
+};
+
 void show_build_error(const string* source_path, cl_program* program, cl_device_id device) {
     char* buff_error;
     cl_int errcode;
@@ -119,10 +144,28 @@ void image_padding(cv::Mat image, cv::Mat& dest, int padding_size){
 
 
 
-void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, cl_mem costBuffer) {
+void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer) {
 
     int width = image.cols - 2*max_distance;
     int height = image.rows - 2*max_distance;
+
+    cv::Mat output_a_k_list[16];
+    cv::Mat output_b_k_list[16];
+    cv::Mat cost_list[16];
+    cv::Mat cost_padded_list[16];
+    int cost_padded_size = 0;
+
+    for (int i = 0; i < 16; i++) {
+        output_a_k_list[i] = cv::Mat(image.rows, image.cols, CV_8U);
+        output_b_k_list[i] = cv::Mat(image.rows, image.cols, CV_8U);
+        cost_list[i] = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, costBuffer.type);
+        cv::Mat cost_padded;
+        image_padding(cost_list[i], cost_padded, max_distance);
+        cost_padded_list[i] = cost_padded;
+    }
+
+    cost_padded_size = cost_padded_list[0].total() * cost_padded_list[0].elemSize();
+    
 
     int image_1D_size = image.total() * image.elemSize();
     cl_mem buffer = clCreateBuffer(context,
@@ -133,7 +176,9 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
     cv::Mat output_a_k = cv::Mat(image.rows, image.cols, CV_8U);
     cv::Mat output_b_k = cv::Mat(image.rows, image.cols, CV_8U);
 
-    cv::Mat cost = cv::Mat(image.rows, image.cols, CV_8U);
+    //cv::Mat cost = cv::Mat(image.rows, image.cols, CV_8U);
+
+    cv::Mat cost = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, costBuffer.type);
 
     cv::Mat cost_padded;
     image_padding(cost, cost_padded, max_distance);
@@ -150,16 +195,35 @@ void guidedFilter(const string *image_path, cv::Mat& image, int max_distance, cl
         (void*)output_b_k.data, NULL);
 
 
+    /*cl_mem cost_buffer = clCreateBuffer(context,
+        CL_MEM_COPY_HOST_PTR,
+        cost_padded_size,
+        (void*)cost_padded.data, NULL);*/
+
+    cl_mem cost_buffer_list[16];
+
+
+    for (int i = 0; i < 16; i++) {
+        cl_mem cost_buffer = clCreateBuffer(context,
+            CL_MEM_COPY_HOST_PTR,
+            cost_padded_size,
+            (void*)cost_padded_list[i].data, NULL);
+        
+        cost_buffer_list[i] = cost_buffer;
+    
+    
+    }
+
     cl_mem cost_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
+        cost_padded_size,
         (void*)cost_padded.data, NULL);
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
     clSetKernelArg(kernel, 1, sizeof(output_a_k_buffer), (void*)&output_a_k_buffer);
     clSetKernelArg(kernel, 2, sizeof(output_b_k_buffer), (void*)&output_b_k_buffer);
-    clSetKernelArg(kernel, 3, sizeof(cost_buffer), (void*)&cost_buffer);
+    clSetKernelArg(kernel, 3, sizeof(cost_buffer), (void*)cost_buffer);
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
@@ -305,31 +369,6 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 }
 
-
-struct opencl_stuff {
-    cl_device_id device;
-    cl_context context;
-    cl_command_queue queue;
-};
-
-struct opencl_buffer {
-    cl_mem buffer;
-    std::size_t buffer_size;
-    int cols, rows, type;
-
-    void write_img(string path_to_write, opencl_stuff ocl_stuff) {
-        cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
-        clEnqueueReadBuffer(ocl_stuff.queue,
-            buffer,
-            CL_TRUE,
-            NULL,
-            buffer_size,
-            (void*)image_to_write.data, NULL, NULL, NULL);
-
-
-        cv::imwrite(path_to_write, image_to_write);
-    }
-};
 
 
 opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int disparity, cl_device_id device, cl_context context, cl_command_queue queue) {

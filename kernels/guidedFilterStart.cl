@@ -22,7 +22,7 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
             src_image_pixels_sum += src[id];
             src_image_pixels_sum_square += (src[id] * src[id]);
             p_k_sum += cost[id];
-            p_pixels_product += src[id] * cost[id];
+            p_pixels_product += src[id] * (int) cost[id];
         }
     }
 

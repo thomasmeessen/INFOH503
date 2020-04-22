@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer.buffer);
+    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer);
 
 
 
