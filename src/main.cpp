@@ -17,8 +17,8 @@ const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
 const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
-const string left_image_path = "classroom_l.png";
-const string right_image_path = "classroom_r.png";
+const string left_image_path = "paper0.png";
+const string right_image_path = "paper1.png";
 const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
 
 
@@ -64,8 +64,8 @@ int main(int argc, char** argv)
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
 
-    opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
-    cost_layer.write_img("Cost_for_layer_20.png", ocl_stuff);
+    opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, 4, ocl_stuff);
+    cost_layer.write_img("Cost_for_layer_4.png", ocl_stuff);
 
 
 

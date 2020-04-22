@@ -1,5 +1,9 @@
 #include <string>
 #include <iostream>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 
 using namespace std;
 
@@ -331,6 +335,8 @@ struct opencl_buffer {
             (void*)image_to_write.data, NULL, NULL, NULL);
 
 
+        cv::normalize(image_to_write, image_to_write, 0 ,255, cv::NORM_MINMAX);
+        cout << image_to_write <<endl;
         cv::imwrite(path_to_write, image_to_write);
     }
 };
