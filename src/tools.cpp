@@ -309,10 +309,7 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> dev
 struct opencl_stuff {
     cl_device_id device;
     cl_context context;
@@ -338,13 +335,6 @@ struct opencl_buffer {
     }
 };
 
-void image_padding (cv::Mat image, cv::Mat &dest, int padding_size)
-{
-    cv::Rect extract_zone (padding_size, padding_size, image.cols, image.rows);
-    cv::Mat image_padded = cv::Mat::zeros(image.rows + 2*padding_size, image.cols + 2 * padding_size, image.type());
-    image.copyTo(image_padded(extract_zone));
-    dest = image_padded;
-}
 
 opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int disparity, cl_device_id device , cl_context context, cl_command_queue queue) {
 
