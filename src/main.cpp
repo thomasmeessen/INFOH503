@@ -66,6 +66,7 @@ int main(int argc, char** argv)
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
 
+
     opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
     cost_layer.write_img("Cost_for_layer_20.png", ocl_stuff);
 
@@ -87,7 +88,7 @@ int main(int argc, char** argv)
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer);
+    guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer);
 
 
 

@@ -2,10 +2,10 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
     const int x = get_global_id(0);
     const int y = get_global_id(1);
     //const id = (y * get_global_size(0)) + x;
+    //printf("yes");
 
     int radius = 2;
     int omega_size = 25;
-    int good_pixels = 0;
     int src_image_pixels_sum = 0;
     int src_image_pixels_sum_square = 0;
     int p_k_sum = 0;
@@ -18,11 +18,11 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
     for (int i = -radius; i <= radius; i++) {
         for (int j = -radius; j <= radius; j++) {
             const int id = ((new_y + j) * (original_width + 2 * max_dist)) + (new_x + i);
-            good_pixels++;
             src_image_pixels_sum += src[id];
             src_image_pixels_sum_square += (src[id] * src[id]);
-            p_k_sum += cost[id];
+            p_k_sum += (int) cost[id];
             p_pixels_product += src[id] * (int) cost[id];
+            //printf("%f \n", cost[id]);
         }
     }
 
@@ -35,6 +35,7 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
     int b_k = p_k - a_k * mu_k;
     //printf("%d \n", a_k);
     dst_a_k[central_pixel] = a_k;
+    dst_a_k[central_pixel + 5918464 * 2] = a_k;
     dst_b_k[central_pixel] = b_k;
 
 }
