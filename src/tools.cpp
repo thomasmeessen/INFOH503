@@ -197,14 +197,14 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     cv::Mat image = left_image_padded;
 
 
-    int width = image.cols - 2 * max_distance;
+    int width = image.cols - 2 * max_distance; // because the image is padded
     int height = image.rows - 2 * max_distance;
 
     int number = 3; // number of layer.
 
-    cv::Mat final_image = cv::Mat(image.rows, image.cols, CV_8U);
+    cv::Mat final_image = cv::Mat(costBuffer.rows, costBuffer.cols, CV_32FC1);
 
-    cv::Mat cost_list = cv::Mat::zeros(image.rows * number, image.cols * number, costBuffer.type);
+    cv::Mat cost_list = cv::Mat(image.rows * max_distance, image.cols, costBuffer.type, (void*)costBuffer.buffer);
 
     cout << "number of rows: " << image.rows << endl;
 
@@ -214,11 +214,11 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         image_1D_size,
         (void*)image.data, NULL);
 
-    cv::Mat output_a_k = cv::Mat(image.rows, image.cols, CV_8U);
-    cv::Mat output_b_k = cv::Mat(image.rows, image.cols, CV_8U);
+    cv::Mat output_a_k = cv::Mat(image.rows, image.cols, CV_32FC1);
+    cv::Mat output_b_k = cv::Mat(image.rows, image.cols, CV_32FC1);
 
-    cv::Mat output_a_k_list = cv::Mat(image.rows * number, image.cols * number, CV_8U);
-    cv::Mat output_b_k_list = cv::Mat(image.rows * number, image.cols * number, CV_8U);
+    cv::Mat output_a_k_list = cv::Mat(image.rows * max_distance, image.cols, CV_32FC1);
+    cv::Mat output_b_k_list = cv::Mat(image.rows * max_distance, image.cols, CV_32FC1);
 
 
     cv::Mat cost = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, costBuffer.type);
@@ -284,10 +284,10 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
-    size_t global_work_size_image[] = { (size_t)image.cols - 2*number, (size_t)image.rows- 2*number }; // don't work on pixels in the padding hence the "- 2*max_distance"
+    size_t global_work_size_image[] = { (size_t)image.cols - 2, (size_t)image.rows- 2, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
     clEnqueueNDRangeKernel(queue,
         kernel,
-        2,
+        3,
         NULL,
         global_work_size_image,
         NULL,
@@ -319,7 +319,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         output_a_k_buffer_list,
         CL_TRUE,
         5918464 * 0,
-        image_1D_size,
+        final_image.total()* final_image.elemSize(),
         (void*)final_image.data, NULL, NULL, NULL);
 
 
@@ -336,6 +336,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         cv::imwrite(output_name, final_image);
         cv::imwrite(output_name1, output_b_k_list);
     }
+
     //Seconde pass
     cv::Mat guidedFilter_image = cv::Mat(image.rows, image.cols, CV_8U);
 
@@ -468,7 +469,7 @@ opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int
     image_padding(left_source_image, left_image_padded, padding_size);
     cv::Mat right_image_padded;
     image_padding(right_source_image, right_image_padded, padding_size);
-    cv::Mat output_layer_cost = cv::Mat::zeros(right_source_image.rows*disparity, right_source_image.cols, CV_32FC1);// we generate all layers
+    cv::Mat output_layer_cost = cv::Mat::zeros((right_source_image.rows + 2*disparity)*disparity, right_source_image.cols +2*disparity , CV_32FC1);// we generate all layers
 
     // - Merging into a single matrix with entrelacement
     cv::Mat source_images_padded;
