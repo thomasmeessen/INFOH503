@@ -19,6 +19,8 @@ const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string left_image_path = "paper0.png";
 const string right_image_path = "paper1.png";
+// const string left_image_path = "classroom_l.png";
+// const string right_image_path = "classroom_r.png";
 const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
 
 
@@ -90,7 +92,7 @@ int main(int argc, char** argv)
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer);
+    guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer, ocl_stuff);
 
 
 

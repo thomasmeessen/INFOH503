@@ -20,8 +20,8 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     for (int i = -radius; i <= radius; i++) {
         for (int j = -radius; j <= radius; j++) {
             const int src_id = ((new_y + j) * (original_width + 2 * max_dist)) + (new_x + i);
-            const int cost_id = ((new_y + j) * (original_width + 2 * max_dist)) + (new_x + i)+ z*image_size;
-            float source_pixel = src[src_id];
+            const int cost_id = ((new_y + j) * (original_width + 2 * max_dist)) + (new_x + i)+ z*padded_image_size;
+            int source_pixel = src[src_id];
             float cost_pixel = cost[cost_id];
             src_image_pixels_sum += source_pixel;
             src_image_pixels_sum_square += (source_pixel * source_pixel);
@@ -39,7 +39,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     float a_k = ((p_pixels_product / omega_size) - mu_k * p_k) / ((sigma_k * sigma_k) + epsilon);
     float b_k = p_k - a_k * mu_k;
 
-    dst_a_k[central_pixel] = a_k;
+    dst_a_k[central_pixel] =a_k;
     dst_b_k[central_pixel] = b_k;
 
 }

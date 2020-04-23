@@ -12,7 +12,7 @@ kernel void memset(   global unsigned char *input_images, global float *output_c
     const int index_left = 2*(x + y * size_x);
     const int index_right = index_left  +1 +z*2;
 
-    const int output_index = x + y* size_x + z*size_x*size_y ; //(z+1)*disparity*size_x;
+    const int output_index = x + y* size_x + z*size_x*size_y ;
     
     // Accounting for entrelaced image
     float color_difference = abs( input_images[index_left] - input_images[index_right]);
@@ -24,7 +24,7 @@ kernel void memset(   global unsigned char *input_images, global float *output_c
 
     gradient_difference = (gradient_difference < t2) ? gradient_difference : t2;
     float cost = (1 - weight)  * color_difference + weight * gradient_difference;
-    cost = 40*cost;
+    // cost = 40*cost;
 
 
     output_cost[output_index] = cost;

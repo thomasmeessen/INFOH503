@@ -184,7 +184,7 @@ void image_padding(cv::Mat image, cv::Mat& dest, int padding_size){
 
 
 
-void guidedFilter(const string *image_path, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer) {
+void guidedFilter(const string *image_path, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff) {
 
     //image loading in grayscale
     cv::Mat left_source_image = cv::imread(*image_path, cv::IMREAD_GRAYSCALE);
@@ -204,9 +204,13 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
 
     cv::Mat final_image = cv::Mat(costBuffer.rows, costBuffer.cols, CV_32FC1);
 
-    cv::Mat cost_list = cv::Mat(image.rows * max_distance, image.cols, costBuffer.type, (void*)costBuffer.buffer);
-
-    cout << "number of rows: " << image.rows << endl;
+    cv::Mat cost_list = cv::Mat(image.rows * max_distance, image.cols, costBuffer.type);
+    clEnqueueReadBuffer(ocl_stuff.queue,
+            costBuffer.buffer,
+            CL_TRUE,
+            NULL,
+            costBuffer.buffer_size,
+            (void*)cost_list.data, NULL, NULL, NULL);
 
     int image_1D_size = image.total() * image.elemSize();
     cl_mem buffer = clCreateBuffer(context,
@@ -239,12 +243,12 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
 
     cl_mem output_a_k_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
+        output_a_k.total()*output_a_k.elemSize(),
         (void*)output_a_k.data, NULL);
 
     cl_mem output_b_k_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
+        output_b_k.total()*output_b_k.elemSize(),
         (void*)output_b_k.data, NULL);
 
 
@@ -338,11 +342,11 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     }
 
     //Seconde pass
-    cv::Mat guidedFilter_image = cv::Mat(image.rows, image.cols, CV_8U);
+    cv::Mat guidedFilter_image = cv::Mat(image.rows*max_distance, image.cols, CV_32FC1);
 
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
-        image_1D_size,
+        guidedFilter_image.total()*guidedFilter_image.elemSize(),
         (void*)guidedFilter_image.data, NULL);
 
     clSetKernelArg(kernel0, 0, sizeof(buffer), (void*)&buffer);
@@ -356,7 +360,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
 
     clEnqueueNDRangeKernel(queue,
         kernel0,
-        2,
+        3,
         NULL,
         global_work_size_image,
         NULL,
@@ -370,7 +374,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         guidedFilter_image_buffer,
         CL_TRUE,
         NULL,
-        image_1D_size,
+        guidedFilter_image.total()*guidedFilter_image.elemSize(),
         (void*)guidedFilter_image.data, NULL, NULL, NULL);
 
     if (write_to_png) {
