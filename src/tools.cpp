@@ -14,7 +14,7 @@ struct opencl_buffer {
     std::size_t buffer_size;
     int cols, rows, type;
 
-    void write_img(string path_to_write, opencl_stuff ocl_stuff) {
+    void write_img(string path_to_write, opencl_stuff ocl_stuff, bool to_normalize) {
         cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
         clEnqueueReadBuffer(ocl_stuff.queue,
             buffer,
@@ -22,11 +22,51 @@ struct opencl_buffer {
             NULL,
             buffer_size,
             (void*)image_to_write.data, NULL, NULL, NULL);
-
-
-        cv::imwrite(path_to_write, image_to_write);
+        if(to_normalize){
+            cv::Mat normalized_image = cv::Mat::zeros(rows, cols, type);
+            cv::normalize(image_to_write, normalized_image);
+            cv::imwrite(path_to_write, normalized_image);
+        }
+        else{
+            cv::imwrite(path_to_write, image_to_write);
+        }
     }
 };
+
+void print_device_info(cl_device_id device){
+    printf("======Device Info======\n");
+    // https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clGetDeviceInfo.html
+    size_t retSize;
+    char info[1024];
+    cl_ulong buf_ulong;
+    size_t buf_size_t;
+    clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(info), info, NULL);
+    printf("Device name = %s\n", info);
+
+    clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
+    printf("Global memory size :%llu B\n", (unsigned long long)buf_ulong);
+
+    clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
+    printf("Maximum allocatable memory size :%llu B\n", (unsigned long long)buf_ulong);
+
+    clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
+    printf("Local memory size :%llu B\n", (unsigned long long)buf_ulong);
+
+    clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
+    printf("Max constant buffer size:%llu B\n", (unsigned long long)buf_ulong);
+    
+    clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
+    printf("Max mem alloc size size:%llu B\n", (unsigned long long)buf_ulong);
+    
+    clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(buf_size_t), &buf_size_t, NULL);
+    printf("Max work group size:%zu \n", buf_size_t);
+    
+    clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(buf_size_t), &buf_size_t, NULL);
+    printf("Max work item size:%zu \n", buf_size_t);
+    
+    printf("=======================\n");
+
+}
 
 void show_build_error(const string* source_path, cl_program* program, cl_device_id device) {
     char* buff_error;
@@ -160,13 +200,13 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     int width = image.cols - 2 * max_distance;
     int height = image.rows - 2 * max_distance;
 
-    int number = 3;
+    int number = 3; // number of layer.
 
     cv::Mat final_image = cv::Mat(image.rows, image.cols, CV_8U);
 
     cv::Mat cost_list = cv::Mat::zeros(image.rows * number, image.cols * number, costBuffer.type);
 
-    cout << "size " << image.rows << endl;
+    cout << "number of rows: " << image.rows << endl;
 
     int image_1D_size = image.total() * image.elemSize();
     cl_mem buffer = clCreateBuffer(context,
@@ -180,7 +220,6 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     cv::Mat output_a_k_list = cv::Mat(image.rows * number, image.cols * number, CV_8U);
     cv::Mat output_b_k_list = cv::Mat(image.rows * number, image.cols * number, CV_8U);
 
-    //cv::Mat cost = cv::Mat(image.rows, image.cols, CV_8U);
 
     cv::Mat cost = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, costBuffer.type);
 
@@ -219,24 +258,6 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         output_b_k_list.total() * output_b_k_list.elemSize(),
         (void*)output_b_k_list.data, NULL);
 
-
-   /* cl_mem cost_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        cost_padded_size,
-        (void*)cost_padded.data, NULL);*/
-
-    //cl_mem cost_buffer_list[16];
-
-
-   /* for (int i = 0; i < 16; i++) {
-        cl_mem cost_buffer = clCreateBuffer(context,
-            CL_MEM_COPY_HOST_PTR,
-            cost_padded_size,
-            (void*)cost_padded_list[i].data, NULL);
-        
-        cost_buffer_list[i] = cost_buffer;
-    }*/
-
     cl_mem cost_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         cost_padded.total() * cost_padded.elemSize(),
@@ -257,16 +278,13 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
-    //clSetKernelArg(kernel, 1, sizeof(output_a_k_buffer), (void*)&output_a_k_buffer);
     clSetKernelArg(kernel, 1, sizeof(output_a_k_buffer_list), (void*)&output_a_k_buffer_list);
-    //clSetKernelArg(kernel, 2, sizeof(output_b_k_buffer), (void*)&output_b_k_buffer);
     clSetKernelArg(kernel, 2, sizeof(output_b_k_buffer_list), (void*)&output_b_k_buffer_list);
-    //clSetKernelArg(kernel, 3, sizeof(cost_buffer), (void*)&cost_buffer);
     clSetKernelArg(kernel, 3, sizeof(cost_buffer_list), (void*)&cost_buffer_list);
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
-    size_t global_work_size_image[] = { (size_t)image.cols - 2*max_distance, (size_t)image.rows- 2*max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
+    size_t global_work_size_image[] = { (size_t)image.cols - 2*number, (size_t)image.rows- 2*number }; // don't work on pixels in the padding hence the "- 2*max_distance"
     clEnqueueNDRangeKernel(queue,
         kernel,
         2,
@@ -318,7 +336,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         cv::imwrite(output_name, final_image);
         cv::imwrite(output_name1, output_b_k_list);
     }
-    
+    //Seconde pass
     cv::Mat guidedFilter_image = cv::Mat(image.rows, image.cols, CV_8U);
 
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
@@ -443,12 +461,14 @@ opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int
     int padding_size = disparity;
 
     float alpha_weight = 0.5;
+    float t1 = 7.;//tau 1
+    float t2 = 2.;//tau 2 later add as parameter function
 
     cv::Mat left_image_padded;
     image_padding(left_source_image, left_image_padded, padding_size);
     cv::Mat right_image_padded;
     image_padding(right_source_image, right_image_padded, padding_size);
-    cv::Mat output_layer_cost = cv::Mat::zeros(right_source_image.size(), CV_32FC1); // float
+    cv::Mat output_layer_cost = cv::Mat::zeros(right_source_image.rows*disparity, right_source_image.cols, CV_32FC1);// we generate all layers
 
     // - Merging into a single matrix with entrelacement
     cv::Mat source_images_padded;
@@ -464,17 +484,20 @@ opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int
         CL_MEM_WRITE_ONLY,
         output_layer_cost.total() * output_layer_cost.elemSize(),
         NULL, NULL);
+    
     // - Passing arguments to the kernel
     clSetKernelArg(cost_by_layer_kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
     clSetKernelArg(cost_by_layer_kernel, 1, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
     clSetKernelArg(cost_by_layer_kernel, 2, sizeof(padding_size), (void*)&padding_size);
     clSetKernelArg(cost_by_layer_kernel, 3, sizeof(disparity), (void*)&disparity);
     clSetKernelArg(cost_by_layer_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
+    clSetKernelArg(cost_by_layer_kernel, 5, sizeof(t1), (void*)&t1);
+    clSetKernelArg(cost_by_layer_kernel, 6, sizeof(t2), (void*)&t2);
     // - Enqueuing kernel
-    size_t global_work_size_cost_layer[] = { (size_t)right_source_image.cols , (size_t)right_source_image.rows };
+    size_t global_work_size_cost_layer[] = { (size_t)right_source_image.cols , (size_t)right_source_image.rows, (size_t)disparity };
     clEnqueueNDRangeKernel(queue,
         cost_by_layer_kernel,
-        2,
+        3,
         NULL,
         global_work_size_cost_layer,
         NULL,

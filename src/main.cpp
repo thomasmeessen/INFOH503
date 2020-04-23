@@ -17,9 +17,10 @@ const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
 const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
-const string left_image_path = "classroom_l.png";
-const string right_image_path = "classroom_r.png";
+const string left_image_path = "paper0.png";
+const string right_image_path = "paper1.png";
 const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
+
 
 
 int main(int argc, char** argv)
@@ -34,7 +35,7 @@ int main(int argc, char** argv)
         CL_DEVICE_TYPE_GPU,
         1,
         &device, NULL);
-
+    print_device_info(device);
     // 2.1 Check if the device tolerate images
     //cl_bool param_value_image_accepted;
     //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
@@ -68,7 +69,8 @@ int main(int argc, char** argv)
 
 
     opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
-    cost_layer.write_img("Cost_for_layer_20.png", ocl_stuff);
+    cost_layer.write_img("Cost_for_layer.png", ocl_stuff, false);
+    cost_layer.write_img("Cost_for_layer_normalized.png", ocl_stuff, true);
 
 
 
