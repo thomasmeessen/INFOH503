@@ -302,11 +302,11 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
 
     // 7. Look at the results via synchronous buffer map.
 
-   /* clEnqueueReadBuffer(queue,
+    clEnqueueReadBuffer(queue,
         output_a_k_buffer,
         CL_TRUE,
         NULL,
-        image_1D_size,
+        output_a_k.total()*output_a_k.elemSize(),
         (void*)output_a_k.data, NULL, NULL, NULL);
 
 
@@ -314,8 +314,8 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         output_b_k_buffer,
         CL_TRUE,
         NULL,
-        image_1D_size,
-        (void*)output_b_k.data, NULL, NULL, NULL);*/
+        output_b_k.total()*output_b_k.elemSize(),
+        (void*)output_b_k.data, NULL, NULL, NULL);
 
 
 
@@ -350,8 +350,8 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         (void*)guidedFilter_image.data, NULL);
 
     clSetKernelArg(kernel0, 0, sizeof(buffer), (void*)&buffer);
-    clSetKernelArg(kernel0, 1, sizeof(output_a_k_buffer), (void*)&output_a_k_buffer);
-    clSetKernelArg(kernel0, 2, sizeof(output_b_k_buffer), (void*)&output_b_k_buffer);
+    clSetKernelArg(kernel0, 1, sizeof(output_a_k_buffer_list), (void*)&output_a_k_buffer_list);
+    clSetKernelArg(kernel0, 2, sizeof(output_b_k_buffer_list), (void*)&output_b_k_buffer_list);
     clSetKernelArg(kernel0, 3, sizeof(guidedFilter_image_buffer), (void*)&guidedFilter_image_buffer);
     clSetKernelArg(kernel0, 4, sizeof(width), &width);
     clSetKernelArg(kernel0, 5, sizeof(height), &height);

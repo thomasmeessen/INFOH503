@@ -8,12 +8,12 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     //printf("yes");
 
     int radius = 2;
-    int omega_size = 25;
+    float omega_size = 25.;
     int src_image_pixels_sum = 0;
     int src_image_pixels_sum_square = 0;
     float p_k_sum = 0;
     float p_pixels_product = 0;
-    int epsilon = 0;
+    float epsilon = (255*255)/10000;
     int new_y = y + max_dist;
     int new_x = x + max_dist;
     int central_pixel = new_x + new_y * (original_width + 2 * max_dist) + z*padded_image_size;
@@ -26,7 +26,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
             src_image_pixels_sum += source_pixel;
             src_image_pixels_sum_square += (source_pixel * source_pixel);
             p_k_sum += cost_pixel;
-            p_pixels_product += source_pixel *  cost_pixel;
+            p_pixels_product += (float)source_pixel *  cost_pixel;
             //printf("%f \n", cost[id]);
         }
     }

@@ -6,7 +6,7 @@ kernel void memset(__global unsigned char* src, __global float* src_a_k, __globa
 
 
     int radius = 2;
-    int omega_size = 25;
+    float omega_size = 25;
     float a_k_sum = 0;
     float b_k_sum = 0;
     int new_y = y + max_dist;
@@ -20,10 +20,9 @@ kernel void memset(__global unsigned char* src, __global float* src_a_k, __globa
             b_k_sum += src_b_k[id];
         }
     }
-
-   // printf("%d \n", a_k_sum);
     float a_k_sum_mean = a_k_sum / omega_size;
     float b_k_sum_mean = b_k_sum / omega_size;
-    dst[central_pixel] = (a_k_sum_mean * src[central_pixel - z*padded_image_size] + b_k_sum_mean)*100;
+    float source_pixel = (float)src[central_pixel- z*padded_image_size];
+    dst[central_pixel] = (a_k_sum_mean * source_pixel + b_k_sum_mean);
 
 }
