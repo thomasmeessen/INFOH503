@@ -284,7 +284,7 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
-    size_t global_work_size_image[] = { (size_t)image.cols - 2, (size_t)image.rows- 2, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
+    size_t global_work_size_image[] = { (size_t)image.cols - 2*max_distance, (size_t)image.rows- 2*max_distance, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
     clEnqueueNDRangeKernel(queue,
         kernel,
         3,
