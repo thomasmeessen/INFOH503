@@ -36,7 +36,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     float p_k = p_k_sum / omega_size;
 
     //int a_k = ((p_pixels_product / omega_size) - mu_k) / ((sigma_k * sigma_k) + epsilon);
-    float a_k = ((p_pixels_product / omega_size) - mu_k * p_k) / ((sigma_k * sigma_k) + epsilon);
+    float a_k = ((p_pixels_product / omega_size) - mu_k * p_k) / ((sigma_k ) + epsilon);
     float b_k = p_k - a_k * mu_k;
 
     dst_a_k[central_pixel] =a_k;
