@@ -24,7 +24,7 @@ struct opencl_buffer {
             (void*)image_to_write.data, NULL, NULL, NULL);
         if(to_normalize){
             cv::Mat normalized_image = cv::Mat::zeros(rows, cols, type);
-            cv::normalize(image_to_write, normalized_image);
+            cv::normalize(image_to_write, normalized_image, 0, 255, cv::NORM_MINMAX);
             cv::imwrite(path_to_write, normalized_image);
         }
         else{
@@ -184,7 +184,7 @@ void image_padding(cv::Mat image, cv::Mat& dest, int padding_size){
 
 
 
-void guidedFilter(const string *image_path, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff) {
+cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff) {
 
     //image loading in grayscale
     cv::Mat left_source_image = cv::imread(*image_path, cv::IMREAD_GRAYSCALE);
@@ -335,14 +335,18 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         (void*)output_b_k_list.data, NULL, NULL, NULL);
 
     if (write_to_png) {
-        string output_name = "guided_a_k_" + *image_path;
-        string output_name1 = "guided_b_k_" + *image_path;
-        cv::imwrite(output_name, final_image);
-        cv::imwrite(output_name1, output_b_k_list);
+        string output_name = "guided_a_k_normalized" + *image_path;
+        string output_name1 = "guided_b_k_normalized" + *image_path;
+        cv::Mat normalized_image = cv::Mat::zeros(final_image.rows, final_image.cols, final_image.type());
+        cv::normalize(final_image, normalized_image, 0, 255, cv::NORM_MINMAX);
+        cv::imwrite(output_name, normalized_image);
+        cv::normalize(output_b_k_list, normalized_image, 0, 255, cv::NORM_MINMAX);
+
+        cv::imwrite(output_name1, normalized_image);
     }
 
     //Seconde pass
-    cv::Mat guidedFilter_image = cv::Mat(image.rows*max_distance, image.cols, CV_32FC1);
+    cv::Mat guidedFilter_image = cv::Mat((image.rows - 2*max_distance)*max_distance, image.cols- 2*max_distance, CV_32FC1);
 
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
@@ -378,10 +382,14 @@ void guidedFilter(const string *image_path, int max_distance, cl_context context
         (void*)guidedFilter_image.data, NULL, NULL, NULL);
 
     if (write_to_png) {
-        string output_name = "guided_test_" + *image_path;
-        cv::imwrite(output_name, guidedFilter_image);
+        string output_name = "guided_test_normalized" + *image_path;
+        cv::Mat normalized_image = cv::Mat::zeros(guidedFilter_image.rows, guidedFilter_image.cols, guidedFilter_image.type());
+        cv::normalize(guidedFilter_image, normalized_image, 0, 255, cv::NORM_MINMAX);
+
+        cv::imwrite(output_name, normalized_image);
     }
 
+    return guidedFilter_image; // no padding in it
 
 }
 
@@ -524,4 +532,52 @@ opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int
 
 opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int disparity, opencl_stuff ocl_stuff) {
     return cost_by_layer(path_image_left, path_image_right, disparity, ocl_stuff.device, ocl_stuff.context, ocl_stuff.queue);
+}
+
+void cost_selection(const string * image_path, cv::Mat filtered_cost,int disparity, cl_kernel kernel, opencl_stuff ocl_stuff, bool write_to_png){
+    const int image_widht =filtered_cost.cols;
+    const int image_height =filtered_cost.rows/disparity; // cause disparity layers
+
+    cv::Mat depth_map = cv::Mat::zeros(image_height, image_widht,CV_8UC1);
+
+    cl_mem cost_input_buffer = clCreateBuffer(ocl_stuff.context,
+        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+        filtered_cost.total() * filtered_cost.elemSize(),
+        (void*)filtered_cost.data, NULL);
+
+    cl_mem output_buffer = clCreateBuffer(ocl_stuff.context,
+        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+        depth_map.total() * depth_map.elemSize(),
+        (void*)depth_map.data, NULL);
+
+    clSetKernelArg(kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
+    clSetKernelArg(kernel, 1, sizeof(disparity), (void*)&disparity);
+    clSetKernelArg(kernel, 2, sizeof(output_buffer), (void*)&output_buffer);
+    size_t global_work_size_image[] = { (size_t)image_widht, (size_t)image_height };
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+    // - Waiting end execution
+
+    clFinish(ocl_stuff.queue);
+
+    clEnqueueReadBuffer(ocl_stuff.queue,
+        output_buffer,
+        CL_TRUE,
+        NULL,
+        depth_map.total()*depth_map.elemSize(),
+        (void*)depth_map.data, NULL, NULL, NULL);
+
+    if (write_to_png) {
+        string output_name = "depth_map_filtered_" + *image_path;
+        cv::Mat normalized_image = cv::Mat::zeros(depth_map.rows, depth_map.cols, depth_map.type());
+        cv::normalize(depth_map, normalized_image, 0, 255, cv::NORM_MINMAX);
+        cv::imwrite(output_name, normalized_image);
+
+    }
 }

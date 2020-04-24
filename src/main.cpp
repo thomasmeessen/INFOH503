@@ -17,6 +17,7 @@ const string greyscale_source_path = "greyscale.cl";
 const string difference_image_source_path = "differenceImage.cl";
 const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
+const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_image_path = "paper0.png";
 const string right_image_path = "paper1.png";
 // const string left_image_path = "classroom_l.png";
@@ -89,11 +90,16 @@ int main(int argc, char** argv)
     cl_program guidedFilterEnd_program;
     compile_source(&guidedFilterEnd_source_path, &guidedFilterEnd_program, device, context);
     cl_kernel guidedFilterEnd_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
+    
+    cl_program disparity_selection_program;
+    compile_source(&disparity_selection_source_path, &disparity_selection_program, device, context);
+    cl_kernel disparity_selection_kernel = clCreateKernel(disparity_selection_program, "memset", NULL);
+
 
     cv::Mat left_image;
     to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer, ocl_stuff);
-
+    cv::Mat filtered_cost = guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer, ocl_stuff);
+    cost_selection(&left_image_path, filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff,true);
 
 
     return 0;
