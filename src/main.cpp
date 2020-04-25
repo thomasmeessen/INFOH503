@@ -35,11 +35,6 @@ int main(int argc, char** argv)
         1,
         &device, NULL);
 
-    // 2.1 Check if the device tolerate images
-    //cl_bool param_value_image_accepted;
-    //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
-    //cout <<( (param_value_image_accepted == CL_TRUE)? "Device accept image ": "Device do not accept image") << endl;
-
     // 3. Create a context and command queue on that device.
     cl_context context = clCreateContext(NULL,
         1,
@@ -59,13 +54,13 @@ int main(int argc, char** argv)
 
     //--------------------------------------------
     // Layer cost computation
-    opencl_stuff ocl_stuff;
+    Opencl_stuff ocl_stuff;
     ocl_stuff.device = device;
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
 
-    opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, 4, ocl_stuff);
-    cost_layer.write_img("Cost_for_layer_4.png", ocl_stuff);
+    Opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, 4, ocl_stuff);
+    cost_layer.write_img("cost_for_a_specific_layer.png", ocl_stuff);
 
 
 
@@ -76,16 +71,14 @@ int main(int argc, char** argv)
 
     cl_program guidedFilterStart_program;
     compile_source(&guidedFilter_source_path, &guidedFilterStart_program, device, context);
-    cl_kernel guidedFilter_kernel = clCreateKernel(guidedFilterStart_program, "memset", NULL );
+    cl_kernel guided_filter_first_step_kernel = clCreateKernel(guidedFilterStart_program, "memset", NULL );
 
 
     cl_program guidedFilterEnd_program;
     compile_source(&guidedFilterEnd_source_path, &guidedFilterEnd_program, device, context);
-    cl_kernel guidedFilterEnd_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
+    cl_kernel guided_filter_second_step_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
 
-    cv::Mat left_image;
-    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    guidedFilter(&left_image_path ,left_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer.buffer);
+    guidedFilter(left_image_path ,MAX_DISTANCE, ocl_stuff, guided_filter_first_step_kernel, guided_filter_second_step_kernel, true, cost_layer);
 
 
 

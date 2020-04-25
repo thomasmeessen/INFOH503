@@ -3,7 +3,7 @@ kernel void memset(__global unsigned char* src, __global unsigned char* src_a_k,
     const int y = get_global_id(1);
 
     int radius = 2;
-    int omega_size = 25;
+    int sum_color_over_window = 25;
     int a_k_sum = 0;
     int b_k_sum = 0;
     int new_y = y + max_dist;
@@ -19,8 +19,8 @@ kernel void memset(__global unsigned char* src, __global unsigned char* src_a_k,
         }
     }
    // printf("%d \n", a_k_sum);
-    int a_k_sum_mean = a_k_sum / omega_size;
-    int b_k_sum_mean = b_k_sum / omega_size;
+    int a_k_sum_mean = a_k_sum / sum_color_over_window;
+    int b_k_sum_mean = b_k_sum / sum_color_over_window;
     dst[central_pixel] = a_k_sum_mean * src[central_pixel] + b_k_sum_mean;
 
 }
