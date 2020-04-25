@@ -8,7 +8,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     int sum_color_over_window_square = 0;
     int sum_cost_over_window = 0;
     int sum_product_color_cost = 0;
-    int epsilon = 0.001;
+    float epsilon = 0.001;
 
     int central_pixel = x + y * get_global_size(0);
 
@@ -47,23 +47,23 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     }
 
 
-    int average_color_in_window = sum_color_over_window / number_pixels_in_window;
+    float average_color_in_window = (float)sum_color_over_window / (float)number_pixels_in_window;
 
-    int sigma_k_square = (sum_color_over_window_square / number_pixels_in_window) - (average_color_in_window * average_color_in_window);
-    int avg_cost_over_window = sum_cost_over_window / number_pixels_in_window;
+    float sigma_k_square = ((float)sum_color_over_window_square / (float)number_pixels_in_window) - (average_color_in_window * average_color_in_window);
+    float avg_cost_over_window = (float)(sum_cost_over_window) / (float)(number_pixels_in_window);
 
-    int a_k = ((sum_product_color_cost / number_pixels_in_window) - average_color_in_window * avg_cost_over_window) / (sigma_k_square  + epsilon);
-    int b_k = avg_cost_over_window - a_k * average_color_in_window;
+    float a_k = (float)((sum_product_color_cost / number_pixels_in_window) - average_color_in_window * avg_cost_over_window) / (float)(sigma_k_square  + epsilon);
+    float b_k = avg_cost_over_window - a_k * average_color_in_window;
 
 
     if ( x == 370 && y == 20){
         //printf("debug: \n");
-        //("a_k %d \n" , a_k);
-        //printf("b_k %d \n" , b_k);
+        printf("a_k %f \n" , a_k);
+        printf("b_k %f \n" , b_k);
         //printf("number_pixels_in_window %d \n" , number_pixels_in_window);
-        //printf("average_color_in_window %d \n" , average_color_in_window);
-        //printf("sigma_k %d \n" , sigma_k_square);
-        //printf("avg_cost_over_window %d \n" , avg_cost_over_window);
+        printf("average_color_in_window %f \n" , average_color_in_window);
+        printf("sigma_k %f \n" , sigma_k_square);
+        printf("avg_cost_over_window %f \n" , avg_cost_over_window);
         //printf("sum_product_color_cost %d \n" , sum_product_color_cost);
     }
 
