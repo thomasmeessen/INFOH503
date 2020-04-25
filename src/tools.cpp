@@ -30,7 +30,6 @@ struct Opencl_buffer {
 
 
         cv::normalize(image_to_write, image_to_write, 0 ,255, cv::NORM_MINMAX);
-        //cout << image_to_write <<endl;
         cv::imwrite(path_to_write, image_to_write);
     }
 
@@ -42,6 +41,7 @@ struct Opencl_buffer {
         // - Setting parameters
         cols = image.cols;
         rows = image.rows;
+        type = CV_8UC1;
         buffer_size = image.total() * image.elemSize();
 
         // - Allocating the buffers
@@ -50,6 +50,20 @@ struct Opencl_buffer {
                                                   buffer_size,
                                                   (void*)image.data, NULL);
 
+    }
+
+    /**
+     * Create a float buffer initialized with 0
+     * @param rows
+     * @param cols
+     */
+    Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff): cols(cols), rows(rows){
+        cv::Mat zero_matrix = cv::Mat::zeros(rows, cols, CV_32FC1);
+        buffer_size = zero_matrix.total() * zero_matrix.elemSize();
+        type = CV_32FC1;
+        buffer = clCreateBuffer(ocl_stuff.context,CL_MEM_COPY_HOST_PTR ,
+                                buffer_size,
+                                (void*)zero_matrix.data, NULL);
     }
 };
 
@@ -175,30 +189,18 @@ void guidedFilter(const string &image_path, int max_distance,const Opencl_stuff 
 
 
     Opencl_buffer left_image_buffer (image_path, ocl_stuff);
+    Opencl_buffer output_a_k_buffer (left_image_buffer.rows, left_image_buffer.cols, ocl_stuff);
+    Opencl_buffer output_b_k_buffer (left_image_buffer.rows, left_image_buffer.cols, ocl_stuff);
 
-    cv::Mat output_a_k = cv::Mat(left_image_buffer.rows, left_image_buffer.cols, CV_8U);
-    cv::Mat output_b_k = cv::Mat(left_image_buffer.rows, left_image_buffer.cols, CV_8U);
 
-
-    cv::Mat zeroes = cv::Mat::zeros(left_image_buffer.rows, left_image_buffer.cols, left_image_buffer.type);
-
-    cl_mem output_a_k_buffer = clCreateBuffer(ocl_stuff.context,
-        CL_MEM_COPY_HOST_PTR| CL_MEM_WRITE_ONLY,
-        left_image_buffer.buffer_size,
-        (void*)zeroes.data, NULL);
-
-    cl_mem output_b_k_buffer = clCreateBuffer(ocl_stuff.context,
-        CL_MEM_COPY_HOST_PTR| CL_MEM_WRITE_ONLY,
-        left_image_buffer.buffer_size,
-        (void*)zeroes.data, NULL);
 
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
-    clSetKernelArg(kernel_first_step, 0, left_image_buffer.buffer_size, (void*)&left_image_buffer.buffer);
-    clSetKernelArg(kernel_first_step, 1, sizeof(output_a_k_buffer), (void*)&output_a_k_buffer);
-    clSetKernelArg(kernel_first_step, 2, sizeof(output_b_k_buffer), (void*)&output_b_k_buffer);
+    clSetKernelArg(kernel_first_step, 0, sizeof(left_image_buffer.buffer), (void*)&left_image_buffer.buffer);
+    clSetKernelArg(kernel_first_step, 1, sizeof(output_a_k_buffer.buffer), (void*)&output_a_k_buffer.buffer);
+    clSetKernelArg(kernel_first_step, 2, sizeof(output_b_k_buffer.buffer), (void*)&output_b_k_buffer.buffer);
     clSetKernelArg(kernel_first_step, 3, sizeof(cost_buffer.buffer), (void*)&cost_buffer.buffer);
-    cout << "tick" <<endl;
+
     size_t global_work_size_image[] = { (size_t)left_image_buffer.cols, (size_t)left_image_buffer.rows };
     clEnqueueNDRangeKernel(ocl_stuff.queue,
         kernel_first_step,
@@ -213,26 +215,10 @@ void guidedFilter(const string &image_path, int max_distance,const Opencl_stuff 
 
     // 7. Look at the results via synchronous buffer map.
 
-    clEnqueueReadBuffer(ocl_stuff.queue,
-        output_a_k_buffer,
-        CL_TRUE,
-        NULL,
-        left_image_buffer.buffer_size,
-        (void*)output_a_k.data, NULL, NULL, NULL);
-
-
-    clEnqueueReadBuffer(ocl_stuff.queue,
-        output_b_k_buffer,
-        CL_TRUE,
-        NULL,
-        left_image_buffer.buffer_size,
-        (void*)output_b_k.data, NULL, NULL, NULL);
 
     if (write_to_png) {
-        string output_name = "guided_a_k_" + image_path;
-        string output_name1 = "guided_b_k_" + image_path;
-        cv::imwrite(output_name, output_a_k);
-        cv::imwrite(output_name1, output_b_k);
+        output_a_k_buffer.write_img("guided_a_k_" + image_path, ocl_stuff);
+        output_b_k_buffer.write_img("guided_b_k_" + image_path, ocl_stuff);
     }
     /*
     

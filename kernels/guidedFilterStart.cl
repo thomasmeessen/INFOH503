@@ -1,4 +1,4 @@
-kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k, __global unsigned char* dst_b_k, __global unsigned char* cost) {
+kernel void memset(__global unsigned char* src, __global float* dst_a_k, __global float* dst_b_k, __global unsigned char* cost) {
 
     const int x = get_global_id(0);
     const int y = get_global_id(1);
@@ -12,6 +12,7 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
 
     int central_pixel = x + y * get_global_size(0);
 
+
     // For each pixel on a square window of specified radius
 
     // Describing the square window
@@ -22,7 +23,15 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
     int low_y = (y - radius > 0)? y-radius:0;
     int high_y = (y + radius > get_global_size(1)) ? get_global_size(1): y+radius;
 
+
     int number_pixels_in_window = (high_x - low_x ) * (high_y - low_y) ;
+
+    if ( x == 370 && y == 20){
+        printf("debug: \n");
+        printf( " x %d\n", x);
+        printf( " y %d\n", y);
+        printf( " id %d\n", central_pixel);
+    }
 
     for (int i = low_y; i <= high_y; i++) {
         for (int j = low_x; j <= high_y; j++) {
@@ -41,10 +50,8 @@ kernel void memset(__global unsigned char* src, __global unsigned char* dst_a_k,
 
     int a_k = ((sum_product_color_cost / number_pixels_in_window) - average_color_in_window * avg_cost_over_window) / ((sigma_k * sigma_k) + epsilon);
     int b_k = avg_cost_over_window - a_k * average_color_in_window;
-    a_k = x;
-    b_k = y;
     //printf("%d \n", a_k);
-    dst_a_k[central_pixel] = 255;
-    dst_b_k[central_pixel] = 255;
+    dst_a_k[central_pixel] = a_k;
+    dst_b_k[central_pixel] = b_k;
 
 }

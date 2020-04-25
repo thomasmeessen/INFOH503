@@ -58,8 +58,8 @@ int main(int argc, char** argv)
     ocl_stuff.device = device;
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
-
-    Opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, 4, ocl_stuff);
+    int disparity = 4;
+    Opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, disparity, ocl_stuff);
     cost_layer.write_img("cost_for_a_specific_layer.png", ocl_stuff);
 
 
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     compile_source(&guidedFilterEnd_source_path, &guidedFilterEnd_program, device, context);
     cl_kernel guided_filter_second_step_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
 
-    guidedFilter(left_image_path ,MAX_DISTANCE, ocl_stuff, guided_filter_first_step_kernel, guided_filter_second_step_kernel, true, cost_layer);
+    guidedFilter(left_image_path , disparity, ocl_stuff, guided_filter_first_step_kernel, guided_filter_second_step_kernel, true, cost_layer);
 
 
 
