@@ -39,10 +39,6 @@ int main(int argc, char** argv)
         1,
         &device, NULL);
     print_device_info(device);
-    // 2.1 Check if the device tolerate images
-    //cl_bool param_value_image_accepted;
-    //clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), (void *)param_value_image_accepted, NULL);
-    //cout <<( (param_value_image_accepted == CL_TRUE)? "Device accept image ": "Device do not accept image") << endl;
 
     // 3. Create a context and command queue on that device.
     cl_context context = clCreateContext(NULL,
@@ -70,17 +66,16 @@ int main(int argc, char** argv)
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
 
+    // - Image Loading
+    cv::Mat left_source_image = cv::imread(left_image_path, cv::IMREAD_GRAYSCALE);
+    cv::Mat right_source_image = cv::imread(right_image_path, cv::IMREAD_GRAYSCALE);
 
-    opencl_buffer cost_layer = cost_by_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
+
+    opencl_buffer cost_layer = cost_by_layer(left_source_image, right_source_image, MAX_DISTANCE, ocl_stuff);
     cost_layer.write_img("Cost_for_layer.png", ocl_stuff, false);
     cost_layer.write_img("Cost_for_layer_normalized.png", ocl_stuff, true);
 
 
-
-
-    cl_program greyscale_program;
-    compile_source(&greyscale_source_path, &greyscale_program, device, context);
-    cl_kernel greyscale_kernel = clCreateKernel(greyscale_program, "memset", NULL);
 
     cl_program guidedFilterStart_program;
     compile_source(&guidedFilter_source_path, &guidedFilterStart_program, device, context);
@@ -96,10 +91,8 @@ int main(int argc, char** argv)
     cl_kernel disparity_selection_kernel = clCreateKernel(disparity_selection_program, "memset", NULL);
 
 
-    cv::Mat left_image;
-    to_greyscale_plus_padding(&left_image_path ,left_image  ,MAX_DISTANCE ,context, greyscale_kernel, queue, true);
-    cv::Mat filtered_cost = guidedFilter(&left_image_path , MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, true, cost_layer, ocl_stuff);
-    cost_selection(&left_image_path, filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff,true);
+    cv::Mat filtered_cost = guidedFilter(left_source_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, cost_layer, ocl_stuff, &left_image_path);
+    cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &left_image_path);
 
 
     return 0;

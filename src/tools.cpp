@@ -1,5 +1,6 @@
-#include <string>
 #include <iostream>
+
+#include "tools.h"
 
 using namespace std;
 
@@ -113,68 +114,9 @@ void compile_source(const string* source_path, cl_program* program, cl_device_id
     }
 }
 
-void to_greyscale_plus_padding(const string* image_path, cv::Mat& source_image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
-    //put a picture to greyscale and add padding around it.
-    source_image = cv::imread(*image_path, cv::IMREAD_COLOR);
-    source_image.convertTo(source_image, CV_8U);  // for greyscale
-    // + 2* max_distance because will had max_distance column/row on the left/top and max_distance column/row to the right/bottom.
-    cv::Mat output_image = cv::Mat(source_image.rows + 2 * max_distance, source_image.cols + 2 * max_distance, CV_8UC1);
-
-    int input_image_1D_size = source_image.total() * source_image.elemSize();
-    cl_mem input_image_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-        input_image_1D_size,
-        (void*)source_image.data, NULL);
-
-    clSetKernelArg(kernel, 0, sizeof(input_image_buffer), (void*)&input_image_buffer);
-
-    int output_size = output_image.total() * output_image.elemSize(); //https://answers.opencv.org/question/21296/cvmat-data-size/
-    cl_mem output_image_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_WRITE_ONLY,
-        output_size,
-        (void*)output_image.data, NULL);
-
-    clSetKernelArg(kernel, 1, sizeof(output_image_buffer), (void*)&output_image_buffer);
-    int width = source_image.cols;
-    int height = source_image.rows;
-    clSetKernelArg(kernel, 2, sizeof(width), &width);
-    clSetKernelArg(kernel, 3, sizeof(height), &height);
-    clSetKernelArg(kernel, 4, sizeof(max_distance), &max_distance);
-
-    size_t global_work_size_image[] = { (size_t)source_image.cols, (size_t)source_image.rows };
-    clEnqueueNDRangeKernel(queue,
-        kernel,
-        2,
-        NULL,
-        global_work_size_image,
-        NULL,
-        0,
-        NULL, NULL);
-
-    clFinish(queue); // syncing
-
-    // 7. Look at the results via synchronous buffer map.
-    clEnqueueReadBuffer(queue,
-        output_image_buffer,
-        CL_TRUE,
-        NULL,
-        output_size,
-        (void*)output_image.data, NULL, NULL, NULL);
-
-    source_image.release();
-    source_image = output_image;
-
-    if (write_to_png) {
-        string output = "grey_" + *image_path;
-        cv::imwrite(output, output_image);
-    }
-
-}
 
 
-
-
-void image_padding(cv::Mat image, cv::Mat& dest, int padding_size){
+void image_padding(cv::Mat& image, cv::Mat& dest, int padding_size){
     cv::Rect extract_zone(padding_size, padding_size, image.cols, image.rows);
     cv::Mat image_padded = cv::Mat::zeros(image.rows + 2 * padding_size, image.cols + 2 * padding_size, image.type());
     image.copyTo(image_padded(extract_zone));
@@ -183,28 +125,24 @@ void image_padding(cv::Mat image, cv::Mat& dest, int padding_size){
 
 
 
-
-cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, bool write_to_png, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff) {
-
-    //image loading in grayscale
-    cv::Mat left_source_image = cv::imread(*image_path, cv::IMREAD_GRAYSCALE);
+cv::Mat guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff, const string* image_path = NULL) {
 
     //added padding to images
 
     cv::Mat left_image_padded;
     image_padding(left_source_image, left_image_padded, max_distance);
 
-    cv::Mat image = left_image_padded;
 
 
-    int width = image.cols - 2 * max_distance; // because the image is padded
-    int height = image.rows - 2 * max_distance;
 
-    int number = 3; // number of layer.
+    int width = left_image_padded.cols - 2 * max_distance; // because the image is padded
+    int height = left_image_padded.rows - 2 * max_distance;
+
 
     cv::Mat final_image = cv::Mat(costBuffer.rows, costBuffer.cols, CV_32FC1);
 
-    cv::Mat cost_list = cv::Mat(image.rows * max_distance, image.cols, costBuffer.type);
+    cv::Mat cost_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, costBuffer.type);
+
     clEnqueueReadBuffer(ocl_stuff.queue,
             costBuffer.buffer,
             CL_TRUE,
@@ -212,44 +150,18 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
             costBuffer.buffer_size,
             (void*)cost_list.data, NULL, NULL, NULL);
 
-    int image_1D_size = image.total() * image.elemSize();
+    int image_1D_size = left_image_padded.total() * left_image_padded.elemSize();
+
     cl_mem buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)image.data, NULL);
-
-    cv::Mat output_a_k = cv::Mat(image.rows, image.cols, CV_32FC1);
-    cv::Mat output_b_k = cv::Mat(image.rows, image.cols, CV_32FC1);
-
-    cv::Mat output_a_k_list = cv::Mat(image.rows * max_distance, image.cols, CV_32FC1);
-    cv::Mat output_b_k_list = cv::Mat(image.rows * max_distance, image.cols, CV_32FC1);
+        (void*)left_image_padded.data, NULL);
 
 
-    cv::Mat cost = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, costBuffer.type);
-
-    clEnqueueReadBuffer(queue,
-        costBuffer.buffer,
-        CL_TRUE,
-        NULL,
-        costBuffer.buffer_size,
-        (void*)cost.data, NULL, NULL, NULL);
+    cv::Mat output_a_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_32FC1);
+    cv::Mat output_b_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_32FC1);
 
 
-    cv::Mat cost_padded;
-    image_padding(cost, cost_padded, max_distance);
-
-
-
-
-    cl_mem output_a_k_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        output_a_k.total()*output_a_k.elemSize(),
-        (void*)output_a_k.data, NULL);
-
-    cl_mem output_b_k_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        output_b_k.total()*output_b_k.elemSize(),
-        (void*)output_b_k.data, NULL);
 
 
     cl_mem output_a_k_buffer_list = clCreateBuffer(context,
@@ -262,23 +174,11 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
         output_b_k_list.total() * output_b_k_list.elemSize(),
         (void*)output_b_k_list.data, NULL);
 
-    cl_mem cost_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        cost_padded.total() * cost_padded.elemSize(),
-        (void*)cost_padded.data, NULL);
-
     cl_mem cost_buffer_list = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         cost_list.total() * cost_list.elemSize(),
         (void*)cost_list.data, NULL);
 
-
-
-
-   /* cl_mem cost_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR,
-        cost_padded_size,
-        (void*)cost_padded_list[0].data, NULL);*/
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
     clSetKernelArg(kernel, 0, sizeof(buffer), (void*)&buffer);
@@ -288,7 +188,9 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
-    size_t global_work_size_image[] = { (size_t)image.cols - 2*max_distance, (size_t)image.rows- 2*max_distance, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
+
+    size_t global_work_size_image[] = { (size_t)left_image_padded.cols - 2*max_distance, (size_t)left_image_padded.rows- 2*max_distance, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
+
     clEnqueueNDRangeKernel(queue,
         kernel,
         3,
@@ -303,28 +205,11 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
     // 7. Look at the results via synchronous buffer map.
 
     clEnqueueReadBuffer(queue,
-        output_a_k_buffer,
-        CL_TRUE,
-        NULL,
-        output_a_k.total()*output_a_k.elemSize(),
-        (void*)output_a_k.data, NULL, NULL, NULL);
-
-
-    clEnqueueReadBuffer(queue,
-        output_b_k_buffer,
-        CL_TRUE,
-        NULL,
-        output_b_k.total()*output_b_k.elemSize(),
-        (void*)output_b_k.data, NULL, NULL, NULL);
-
-
-
-    clEnqueueReadBuffer(queue,
         output_a_k_buffer_list,
         CL_TRUE,
-        5918464 * 0,
-        final_image.total()* final_image.elemSize(),
-        (void*)final_image.data, NULL, NULL, NULL);
+        NULL,
+        output_a_k_list.total()* output_a_k_list.elemSize(),
+        (void*)output_a_k_list.data, NULL, NULL, NULL);
 
 
     clEnqueueReadBuffer(queue,
@@ -334,19 +219,18 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
         output_b_k_list.total()* output_b_k_list.elemSize(),
         (void*)output_b_k_list.data, NULL, NULL, NULL);
 
-    if (write_to_png) {
-        string output_name = "guided_a_k_normalized" + *image_path;
-        string output_name1 = "guided_b_k_normalized" + *image_path;
+    if (image_path != NULL) {
+        string output_name_a_k = "guided_a_k_normalized_" + *image_path;
+        string output_name_b_k = "guided_b_k_normalized_" + *image_path;
         cv::Mat normalized_image = cv::Mat::zeros(final_image.rows, final_image.cols, final_image.type());
-        cv::normalize(final_image, normalized_image, 0, 255, cv::NORM_MINMAX);
-        cv::imwrite(output_name, normalized_image);
-        cv::normalize(output_b_k_list, normalized_image, 0, 255, cv::NORM_MINMAX);
-
-        cv::imwrite(output_name1, normalized_image);
+        cv::normalize(output_a_k_list, normalized_image, 0, 255, cv::NORM_MINMAX);
+        cv::imwrite(output_name_a_k, normalized_image);
+        cv::normalize(output_b_k_list, normalized_image, 0.0, 255.0, cv::NORM_MINMAX);
+        cv::imwrite(output_name_b_k, normalized_image);
     }
 
     //Seconde pass
-    cv::Mat guidedFilter_image = cv::Mat((image.rows - 2*max_distance)*max_distance, image.cols- 2*max_distance, CV_32FC1);
+    cv::Mat guidedFilter_image = cv::Mat((left_image_padded.rows - 2*max_distance)*max_distance, left_image_padded.cols- 2*max_distance, CV_32FC1);
 
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
@@ -381,11 +265,10 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
         guidedFilter_image.total()*guidedFilter_image.elemSize(),
         (void*)guidedFilter_image.data, NULL, NULL, NULL);
 
-    if (write_to_png) {
-        string output_name = "guided_test_normalized" + *image_path;
+    if (image_path != NULL) {
+        string output_name = "guidedFilter_normalized_" + *image_path;
         cv::Mat normalized_image = cv::Mat::zeros(guidedFilter_image.rows, guidedFilter_image.cols, guidedFilter_image.type());
         cv::normalize(guidedFilter_image, normalized_image, 0, 255, cv::NORM_MINMAX);
-
         cv::imwrite(output_name, normalized_image);
     }
 
@@ -397,7 +280,7 @@ cv::Mat guidedFilter(const string *image_path, int max_distance, cl_context cont
 
 
 void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output_image, int max_distance, cl_context context, cl_kernel kernel, cl_command_queue queue, bool write_to_png) {
-    int image_1D_size = left_image.total() * left_image.elemSize();;
+    int image_1D_size = left_image.total() * left_image.elemSize();
     int original_width = left_image.cols - 2 * max_distance; // cause left_image is the original image + the pading
     int original_height = left_image.rows - 2 * max_distance;
 
@@ -458,17 +341,13 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 
 
-opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int disparity, cl_device_id device, cl_context context, cl_command_queue queue) {
+opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, cl_device_id device, cl_context context, cl_command_queue queue) {
 
     const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
     // - Kernel Compilation
     cl_program cost_by_layer_program;
     compile_source(&cost_by_layer_source_path, &cost_by_layer_program, device, context);
     cl_kernel cost_by_layer_kernel = clCreateKernel(cost_by_layer_program, "memset", NULL);
-
-    // - Image Loading
-    cv::Mat left_source_image = cv::imread(path_image_left, cv::IMREAD_GRAYSCALE);
-    cv::Mat right_source_image = cv::imread(path_image_right, cv::IMREAD_GRAYSCALE);
 
     // - Padding
     int padding_size = disparity;
@@ -530,13 +409,13 @@ opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int
     return  result;
 }
 
-opencl_buffer cost_by_layer(string path_image_left, string path_image_right, int disparity, opencl_stuff ocl_stuff) {
-    return cost_by_layer(path_image_left, path_image_right, disparity, ocl_stuff.device, ocl_stuff.context, ocl_stuff.queue);
+opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, opencl_stuff ocl_stuff) {
+    return cost_by_layer(left_source_image, right_source_image, disparity, ocl_stuff.device, ocl_stuff.context, ocl_stuff.queue);
 }
 
-void cost_selection(const string * image_path, cv::Mat filtered_cost,int disparity, cl_kernel kernel, opencl_stuff ocl_stuff, bool write_to_png){
-    const int image_widht =filtered_cost.cols;
-    const int image_height =filtered_cost.rows/disparity; // cause disparity layers
+void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, opencl_stuff ocl_stuff, const string* image_path = NULL){
+    const int image_widht = filtered_cost.cols;
+    const int image_height = filtered_cost.rows/disparity; // cause disparity layers
 
     cv::Mat depth_map = cv::Mat::zeros(image_height, image_widht,CV_8UC1);
 
@@ -573,7 +452,7 @@ void cost_selection(const string * image_path, cv::Mat filtered_cost,int dispari
         depth_map.total()*depth_map.elemSize(),
         (void*)depth_map.data, NULL, NULL, NULL);
 
-    if (write_to_png) {
+    if (image_path != NULL) {
         string output_name = "depth_map_filtered_" + *image_path;
         cv::Mat normalized_image = cv::Mat::zeros(depth_map.rows, depth_map.cols, depth_map.type());
         cv::normalize(depth_map, normalized_image, 0, 255, cv::NORM_MINMAX);

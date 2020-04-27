@@ -22,7 +22,7 @@ kernel void memset(__global unsigned char* src, __global float* src_a_k, __globa
     }
     float a_k_sum_mean = a_k_sum / omega_size;
     float b_k_sum_mean = b_k_sum / omega_size;
-    float source_pixel = (float)src[central_pixel- z*padded_image_size];
+    float source_pixel = (float) src[central_pixel- z*padded_image_size];
     dst[x+y*get_global_size(0) + z*get_global_size(0)*get_global_size(1)] = (a_k_sum_mean * source_pixel + b_k_sum_mean);
     
 
