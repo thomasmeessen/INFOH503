@@ -32,7 +32,7 @@ kernel void cost_volume_in_range(global unsigned char *left_image, global unsign
     float gradient_difference = fabs( gradient_left - gradient_right);
     gradient_difference = (gradient_difference < t2) ? gradient_difference : t2;
 
-    float cost = (1 - weight)  * (float)color_difference / t1 + weight * gradient_difference / t2;
+    float cost = (float)color_difference / t1 + weight * gradient_difference / t2;
 
 
     output_cost[output_index] = cost;
