@@ -1,4 +1,4 @@
-kernel void memset(   global unsigned char *input_images, global float *output_cost, int padding_size, int disparity, float weight, float t1, float t2){
+kernel void cost_volume_in_range(   global unsigned char *input_images, global float *output_cost, int padding_size, int disparity, float weight, float t1, float t2){
     // A thread per pixel of the right image, hence global_size do not padding size
     const int kernel_x = get_global_id(0);
     const int kernel_y = get_global_id(1);
@@ -36,7 +36,7 @@ kernel void memset(   global unsigned char *input_images, global float *output_c
             output_cost[output_index - i] = cost;
         }
     }
-    else if(kernel_x==(kernel_size_x-1)){//last column, every pixel on the left has the same color
+    else if(kernel_x==(kernel_size_x-1)){//last column, every pixel on the right has the same color
         for(int i=1; i <= padding_size; i++){
             output_cost[output_index + i] = cost;
         }
