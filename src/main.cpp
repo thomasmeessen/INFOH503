@@ -83,8 +83,11 @@ int main(int argc, char** argv)
     cl_kernel disparity_selection_kernel = clCreateKernel(disparity_selection_program, "memset", NULL);
 
     cv::Mat left_source_image = cv::imread(left_image_path,cv::IMREAD_GRAYSCALE);
-    cv::Mat filtered_cost = guidedFilter(left_source_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, cost_layer, ocl_stuff, &left_image_path);
-    cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &left_image_path);
+    Opencl_buffer filtered_cost = guidedFilter(left_source_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, cost_layer, ocl_stuff, &left_image_path);
+    filtered_cost.write_img("filtered_cost.png", ocl_stuff, true);
+    auto depth_map = cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &left_image_path);
+
+    depth_map.write_img("depth_map_filtered_" + left_image_path, ocl_stuff, true);
 
 
     return 0;

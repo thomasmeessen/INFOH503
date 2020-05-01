@@ -160,7 +160,7 @@ void image_padding(cv::Mat& image, cv::Mat& dest, int padding_size){
 
 
 
-cv::Mat guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, const string* image_path = NULL) {
+Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, const string* image_path = NULL) {
 
     //added padding to images
 
@@ -292,22 +292,15 @@ cv::Mat guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context co
 
     clFinish(queue); // syncing
 
+    // - Packing Results
+    Opencl_buffer result;
+    result.buffer = guidedFilter_image_buffer;
+    result.type = CV_32FC1;
+    result.buffer_size = guidedFilter_image.total() * guidedFilter_image.elemSize();
+    result.cols = guidedFilter_image.cols;
+    result.rows = guidedFilter_image.rows;
+    return  result;
 
-    clEnqueueReadBuffer(queue,
-        guidedFilter_image_buffer,
-        CL_TRUE,
-        NULL,
-        guidedFilter_image.total()*guidedFilter_image.elemSize(),
-        (void*)guidedFilter_image.data, NULL, NULL, NULL);
-
-    if (image_path != NULL) {
-        string output_name = "guidedFilter_normalized_" + *image_path;
-        cv::Mat normalized_image = cv::Mat::zeros(guidedFilter_image.rows, guidedFilter_image.cols, guidedFilter_image.type());
-        cv::normalize(guidedFilter_image, normalized_image, 0, 255, cv::NORM_MINMAX);
-        cv::imwrite(output_name, normalized_image);
-    }
-
-    return guidedFilter_image; // no padding in it
 
 }
 
@@ -371,6 +364,7 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
     if (write_to_png) {
         cv::imwrite("img_diff.png", output_image);
     }
+
 
 }
 
@@ -438,26 +432,17 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
 }
 
 
-void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, Opencl_stuff ocl_stuff, const string* image_path = NULL){
-    const int image_widht = filtered_cost.cols;
-    const int image_height = filtered_cost.rows/disparity; // cause disparity layers
+Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, cl_kernel kernel, Opencl_stuff ocl_stuff, const string* image_path = NULL){
+    const int image_width = filtered_cost.cols;
+    const int image_height = filtered_cost.rows / disparity_range; // cause disparity layers
 
-    cv::Mat depth_map = cv::Mat::zeros(image_height, image_widht,CV_8UC1);
 
-    cl_mem cost_input_buffer = clCreateBuffer(ocl_stuff.context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-        filtered_cost.total() * filtered_cost.elemSize(),
-        (void*)filtered_cost.data, NULL);
+    Opencl_buffer output_buffer (image_height, image_width, ocl_stuff);
 
-    cl_mem output_buffer = clCreateBuffer(ocl_stuff.context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-        depth_map.total() * depth_map.elemSize(),
-        (void*)depth_map.data, NULL);
-
-    clSetKernelArg(kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
-    clSetKernelArg(kernel, 1, sizeof(disparity), (void*)&disparity);
-    clSetKernelArg(kernel, 2, sizeof(output_buffer), (void*)&output_buffer);
-    size_t global_work_size_image[] = { (size_t)image_widht, (size_t)image_height };
+    clSetKernelArg(kernel, 0, sizeof(filtered_cost.buffer), (void*)&filtered_cost.buffer);
+    clSetKernelArg(kernel, 1, sizeof(disparity_range), (void*)&disparity_range);
+    clSetKernelArg(kernel, 2, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
+    size_t global_work_size_image[] = { (size_t)image_width, (size_t)image_height };
     clEnqueueNDRangeKernel(ocl_stuff.queue,
         kernel,
         2,
@@ -470,18 +455,5 @@ void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, Open
 
     clFinish(ocl_stuff.queue);
 
-    clEnqueueReadBuffer(ocl_stuff.queue,
-        output_buffer,
-        CL_TRUE,
-        NULL,
-        depth_map.total()*depth_map.elemSize(),
-        (void*)depth_map.data, NULL, NULL, NULL);
-
-    if (image_path != NULL) {
-        string output_name = "depth_map_filtered_" + *image_path;
-        cv::Mat normalized_image = cv::Mat::zeros(depth_map.rows, depth_map.cols, depth_map.type());
-        cv::normalize(depth_map, normalized_image, 0, 255, cv::NORM_MINMAX);
-        cv::imwrite(output_name, normalized_image);
-
-    }
+    return output_buffer;
 }
