@@ -10,7 +10,9 @@
 using namespace std;
 
 
-#define MAX_DISTANCE 16 // maximum differnenc in pixel
+#define MAX_DISTANCE 30 // maximum differnenc in pixel
+
+
 
 // A simple threshold kernel
 const string greyscale_source_path = "greyscale.cl";
@@ -58,14 +60,12 @@ int main(int argc, char** argv)
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
 
-    // - Image Loading
-    cv::Mat left_source_image = cv::imread(left_image_path, cv::IMREAD_GRAYSCALE);
-    cv::Mat right_source_image = cv::imread(right_image_path, cv::IMREAD_GRAYSCALE);
 
 
-    Opencl_buffer cost_layer = cost_range_layer(left_source_image, right_source_image, MAX_DISTANCE, ocl_stuff);
-    cost_layer.write_img("Cost_for_layer.png", ocl_stuff, false);
+    Opencl_buffer cost_layer = cost_range_layer(left_image_path, right_image_path, MAX_DISTANCE, ocl_stuff);
     cost_layer.write_img("Cost_for_layer_normalized.png", ocl_stuff, true);
+    cost_layer.write_img("Cost_for_layer.png", ocl_stuff, false);
+
 
 
 
@@ -77,12 +77,12 @@ int main(int argc, char** argv)
     cl_program guidedFilterEnd_program;
     compile_source(&guidedFilterEnd_source_path, &guidedFilterEnd_program, device, context);
     cl_kernel guidedFilterEnd_kernel = clCreateKernel(guidedFilterEnd_program, "memset", NULL);
-    
+
     cl_program disparity_selection_program;
     compile_source(&disparity_selection_source_path, &disparity_selection_program, device, context);
     cl_kernel disparity_selection_kernel = clCreateKernel(disparity_selection_program, "memset", NULL);
 
-
+    cv::Mat left_source_image = cv::imread(left_image_path,cv::IMREAD_GRAYSCALE);
     cv::Mat filtered_cost = guidedFilter(left_source_image, MAX_DISTANCE, context, guidedFilter_kernel, guidedFilterEnd_kernel, queue, cost_layer, ocl_stuff, &left_image_path);
     cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &left_image_path);
 

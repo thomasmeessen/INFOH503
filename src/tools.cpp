@@ -24,7 +24,7 @@ struct Opencl_buffer {
             buffer_size,
             (void*)image_to_write.data, NULL, NULL, NULL);
         if(to_normalize){
-            cv::Mat normalized_image = cv::Mat::zeros(rows, cols, type);
+            cv::Mat normalized_image;
             cv::normalize(image_to_write, normalized_image, 0, 255, cv::NORM_MINMAX);
             cv::imwrite(path_to_write, normalized_image);
         }
@@ -376,12 +376,12 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 
 
-Opencl_buffer cost_range_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity_range, cl_device_id device, cl_context context, cl_command_queue queue) {
+Opencl_buffer cost_range_layer(const string &left_source_image_path,const string &right_source_image_path, int disparity_range, Opencl_stuff ocl_stuff)  {
 
     const string cost_by_layer_source_path = "cost_volume.cl";
     // - Kernel Compilation
     cl_program cost_by_layer_program;
-    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, device, context);
+    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel cost_volume_kernel = clCreateKernel(cost_by_layer_program, "cost_volume_in_range", NULL);
 
     // - Padding
@@ -391,38 +391,31 @@ Opencl_buffer cost_range_layer(cv::Mat left_source_image, cv::Mat right_source_i
     float t1 = 7.;//tau 1
     float t2 = 2.;//tau 2 later add as parameter function
 
-    cv::Mat left_image_padded;
-    image_padding(left_source_image, left_image_padded, padding_size);
-    cv::Mat right_image_padded;
-    image_padding(right_source_image, right_image_padded, padding_size);
-    cv::Mat output_cost = cv::Mat::zeros((right_source_image.rows + 2 * padding_size) * disparity_range, right_source_image.cols + 2 * padding_size , CV_32FC1);// we generate all layers
+    Opencl_buffer left_image_buffer(left_source_image_path, ocl_stuff);
+    Opencl_buffer right_image_buffer(right_source_image_path, ocl_stuff);
 
-    // - Merging into a single matrix with entrelacement
-    cv::Mat source_images_padded;
-    cv::Mat temp_array[2] = { left_image_padded, right_image_padded };
-    cv::merge(temp_array, 2, source_images_padded);
+    cv::Mat output_cost = cv::Mat::zeros((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size , CV_32FC1);// we generate all layers
+
 
     // - Allocating the buffers
-    cl_mem cost_input_buffer = clCreateBuffer(context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-        source_images_padded.total() * source_images_padded.elemSize(),
-        (void*)source_images_padded.data, NULL);
-    cl_mem cost_output_buffer = clCreateBuffer(context,
-                                               CL_MEM_WRITE_ONLY,
+
+    cl_mem cost_output_buffer = clCreateBuffer(ocl_stuff.context,
+                                               CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
                                                output_cost.total() * output_cost.elemSize(),
-                                               NULL, NULL);
-    
+                                               (void*)output_cost.data, NULL);
+
     // - Passing arguments to the kernel
-    clSetKernelArg(cost_volume_kernel, 0, sizeof(cost_input_buffer), (void*)&cost_input_buffer);
-    clSetKernelArg(cost_volume_kernel, 1, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
-    clSetKernelArg(cost_volume_kernel, 2, sizeof(padding_size), (void*)&padding_size);
-    clSetKernelArg(cost_volume_kernel, 3, sizeof(disparity_range), (void*)&disparity_range);
+    clSetKernelArg(cost_volume_kernel, 0, sizeof(left_image_buffer.buffer), (void*)&left_image_buffer.buffer);
+    clSetKernelArg(cost_volume_kernel, 1, sizeof(right_image_buffer.buffer), (void*)&right_image_buffer.buffer);
+    clSetKernelArg(cost_volume_kernel, 2, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
+    clSetKernelArg(cost_volume_kernel, 3, sizeof(padding_size), (void*)&padding_size);
     clSetKernelArg(cost_volume_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
     clSetKernelArg(cost_volume_kernel, 5, sizeof(t1), (void*)&t1);
     clSetKernelArg(cost_volume_kernel, 6, sizeof(t2), (void*)&t2);
+
     // - Enqueuing kernel
-    size_t global_work_size_cost_layer[] = { (size_t)right_source_image.cols , (size_t)right_source_image.rows, (size_t)disparity_range };
-    clEnqueueNDRangeKernel(queue,
+    size_t global_work_size_cost_layer[] = { (size_t)left_image_buffer.cols , (size_t)left_image_buffer.rows, (size_t)disparity_range };
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
                            cost_volume_kernel,
                            3,
                            NULL,
@@ -432,7 +425,7 @@ Opencl_buffer cost_range_layer(cv::Mat left_source_image, cv::Mat right_source_i
                            NULL, NULL);
 
     // - Waiting end execution
-    clFinish(queue);
+    clFinish(ocl_stuff.queue);
 
     // - Packing Results
     Opencl_buffer result;
@@ -444,10 +437,6 @@ Opencl_buffer cost_range_layer(cv::Mat left_source_image, cv::Mat right_source_i
     return  result;
 }
 
-Opencl_buffer cost_range_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, Opencl_stuff ocl_stuff) {
-    return cost_range_layer(left_source_image, right_source_image, disparity, ocl_stuff.device, ocl_stuff.context,
-                            ocl_stuff.queue);
-}
 
 void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, Opencl_stuff ocl_stuff, const string* image_path = NULL){
     const int image_widht = filtered_cost.cols;
