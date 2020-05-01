@@ -4,18 +4,18 @@
 
 using namespace std;
 
-struct opencl_stuff {
+struct Opencl_stuff {
     cl_device_id device;
     cl_context context;
     cl_command_queue queue;
 };
 
-struct opencl_buffer {
+struct Opencl_buffer {
     cl_mem buffer;
     std::size_t buffer_size;
     int cols, rows, type;
 
-    void write_img(string path_to_write, opencl_stuff ocl_stuff, bool to_normalize) {
+    void write_img(string path_to_write, Opencl_stuff ocl_stuff, bool to_normalize) {
         cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
         clEnqueueReadBuffer(ocl_stuff.queue,
             buffer,
@@ -32,6 +32,41 @@ struct opencl_buffer {
             cv::imwrite(path_to_write, image_to_write);
         }
     }
+
+
+    Opencl_buffer () = default;
+
+    Opencl_buffer(const string & image_path, Opencl_stuff ocl_stuff){
+        // - Image Loading
+        cv::Mat image = cv::imread(image_path, cv::IMREAD_GRAYSCALE);
+        // - Setting parameters
+        cols = image.cols;
+        rows = image.rows;
+        type = CV_8UC1;
+        buffer_size = image.total() * image.elemSize();
+
+        // - Allocating the buffers
+        buffer = clCreateBuffer(ocl_stuff.context,
+                                CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                buffer_size,
+                                (void*)image.data, NULL);
+
+    }
+
+    /**
+     * Create a float buffer initialized with 0
+     * @param rows
+     * @param cols
+     */
+    Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff): cols(cols), rows(rows){
+        cv::Mat zero_matrix = cv::Mat::zeros(rows, cols, CV_32FC1);
+        buffer_size = zero_matrix.total() * zero_matrix.elemSize();
+        type = CV_32FC1;
+        buffer = clCreateBuffer(ocl_stuff.context,CL_MEM_COPY_HOST_PTR ,
+                                buffer_size,
+                                (void*)zero_matrix.data, NULL);
+    }
+
 };
 
 void print_device_info(cl_device_id device){
@@ -125,7 +160,7 @@ void image_padding(cv::Mat& image, cv::Mat& dest, int padding_size){
 
 
 
-cv::Mat guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, struct opencl_buffer costBuffer, opencl_stuff ocl_stuff, const string* image_path = NULL) {
+cv::Mat guidedFilter(cv::Mat& left_source_image, int max_distance, cl_context context, cl_kernel kernel, cl_kernel kernel0, cl_command_queue queue, struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, const string* image_path = NULL) {
 
     //added padding to images
 
@@ -341,7 +376,7 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 
 
-opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, cl_device_id device, cl_context context, cl_command_queue queue) {
+Opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, cl_device_id device, cl_context context, cl_command_queue queue) {
 
     const string cost_by_layer_source_path = "cost_volume_by_layer.cl";
     // - Kernel Compilation
@@ -400,7 +435,7 @@ opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_imag
     clFinish(queue);
 
     // - Reading Results
-    opencl_buffer result;
+    Opencl_buffer result;
     result.buffer = cost_output_buffer;
     result.type = CV_32FC1;
     result.buffer_size = output_layer_cost.total() * output_layer_cost.elemSize();
@@ -409,11 +444,11 @@ opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_imag
     return  result;
 }
 
-opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, opencl_stuff ocl_stuff) {
+Opencl_buffer cost_by_layer(cv::Mat left_source_image, cv::Mat right_source_image, int disparity, Opencl_stuff ocl_stuff) {
     return cost_by_layer(left_source_image, right_source_image, disparity, ocl_stuff.device, ocl_stuff.context, ocl_stuff.queue);
 }
 
-void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, opencl_stuff ocl_stuff, const string* image_path = NULL){
+void cost_selection(cv::Mat filtered_cost, int disparity, cl_kernel kernel, Opencl_stuff ocl_stuff, const string* image_path = NULL){
     const int image_widht = filtered_cost.cols;
     const int image_height = filtered_cost.rows/disparity; // cause disparity layers
 

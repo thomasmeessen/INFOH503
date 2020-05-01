@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
     //--------------------------------------------
     // Layer cost computation
-    opencl_stuff ocl_stuff;
+    Opencl_stuff ocl_stuff;
     ocl_stuff.device = device;
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     cv::Mat right_source_image = cv::imread(right_image_path, cv::IMREAD_GRAYSCALE);
 
 
-    opencl_buffer cost_layer = cost_by_layer(left_source_image, right_source_image, MAX_DISTANCE, ocl_stuff);
+    Opencl_buffer cost_layer = cost_by_layer(left_source_image, right_source_image, MAX_DISTANCE, ocl_stuff);
     cost_layer.write_img("Cost_for_layer.png", ocl_stuff, false);
     cost_layer.write_img("Cost_for_layer_normalized.png", ocl_stuff, true);
 
