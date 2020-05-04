@@ -99,7 +99,26 @@ void print_device_info(cl_device_id device){
     
     clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(buf_size_t), &buf_size_t, NULL);
     printf("Max work item size:%zu \n", buf_size_t);
-    
+        clGetDeviceInfo(device, CL_DEVICE_SINGLE_FP_CONFIG, //https://gist.github.com/aandergr/ca25ace6c11dbae8237feca7758d1da8
+					sizeof(cl_device_fp_config), &fc, NULL);
+    printf("%s:%s%s%s%s%s%s\n", "CL_DEVICE_SINGLE_FP_CONFIG",
+            fc & CL_FP_DENORM ? " DENORM" : "",
+            fc & CL_FP_INF_NAN ? " INF_NAN" : "",
+            fc & CL_FP_ROUND_TO_NEAREST ? " ROUND_TO_NEAREST" : "",
+            fc & CL_FP_ROUND_TO_ZERO ? " ROUND_TO_ZERO" : "",
+            fc & CL_FP_ROUND_TO_INF ? " ROUND_TO_INF" : "",
+            fc & CL_FP_FMA ? " FMA" : "");
+
+    clGetDeviceInfo(device, CL_DEVICE_DOUBLE_FP_CONFIG,
+					sizeof(cl_device_fp_config), &fc, NULL);
+    printf("%s:%s%s%s%s%s%s\n", "CL_DEVICE_DOUBLE_FP_CONFIG",
+            fc & CL_FP_DENORM ? " DENORM" : "",
+            fc & CL_FP_INF_NAN ? " INF_NAN" : "",
+            fc & CL_FP_ROUND_TO_NEAREST ? " ROUND_TO_NEAREST" : "",
+            fc & CL_FP_ROUND_TO_ZERO ? " ROUND_TO_ZERO" : "",
+            fc & CL_FP_ROUND_TO_INF ? " ROUND_TO_INF" : "",
+            fc & CL_FP_FMA ? " FMA" : "");
+
     printf("=======================\n");
 
 }
