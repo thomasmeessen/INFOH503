@@ -12,12 +12,11 @@ kernel void memset( __global double* cost, int disparity_range, __global double*
     double current_min_cost = cost[pixel];
     int current_best_disparity = 1;
     for (int i = 1; i < disparity_range; i++){
-        if((double)cost[pixel+i*image_size] < current_min_cost){
-            current_min_cost = (double)cost[pixel+i*image_size];
+        if(cost[pixel+i*image_size] < current_min_cost){
+            current_min_cost = cost[pixel+i*image_size];
             current_best_disparity = i;
         }
     }
-    double layer  = (double) current_best_disparity;
 
-    output[pixel] = layer;
+    output[pixel] = (double) current_best_disparity;
 }
