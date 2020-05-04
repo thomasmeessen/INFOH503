@@ -76,6 +76,8 @@ void print_device_info(cl_device_id device){
     char info[1024];
     cl_ulong buf_ulong;
     size_t buf_size_t;
+    cl_device_fp_config fc;
+
     clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(info), info, NULL);
     printf("Device name = %s\n", info);
 
