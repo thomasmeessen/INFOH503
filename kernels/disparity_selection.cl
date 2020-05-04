@@ -1,4 +1,4 @@
-kernel void memset( global double* cost, int disparity_range, __global double* output) {
+kernel void memset( __global double* cost, int disparity_range, __global double* output) {
     // prend un vecteur contenant les images � diff�rentes valeurs de disparit� (les diff�rents couches)
     // la valeur de chaque "pixel" de ces couches donne le co�t
     // la fonction donne en retour une nouvelle couche o� chaque pixel a une disparit� qui minimise le co�t
@@ -12,10 +12,12 @@ kernel void memset( global double* cost, int disparity_range, __global double* o
     double current_min_cost = cost[pixel];
     int current_best_disparity = 1;
     for (int i = 1; i < disparity_range; i++){
-        if(cost[pixel+i*image_size] < current_min_cost){
-            current_min_cost = cost[pixel+i*image_size];
+        if((double)cost[pixel+i*image_size] < current_min_cost){
+            current_min_cost = (double)cost[pixel+i*image_size];
             current_best_disparity = i;
         }
     }
-    output[pixel] = (double) current_best_disparity;
+    double layer  = (double) current_best_disparity;
+
+    output[pixel] = layer;
 }

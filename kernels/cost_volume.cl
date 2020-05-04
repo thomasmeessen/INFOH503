@@ -23,15 +23,19 @@ kernel void cost_volume_in_range(global unsigned char *left_image, global unsign
     const int output_disparity_offset = out_row_size* out_col_size * get_global_id(2);
     const int output_index = out_col +  out_row * out_row_size + output_disparity_offset ;
 
-    double color_difference =  abs(left_image[index_left] - right_image[index_right]);
-    color_difference = (color_difference < t1) ? color_difference : t1;
+    double color_difference =  (double)abs(left_image[index_left] - right_image[index_right]);
+    if(color_difference > t1){
+        color_difference = 7.0;
+    }
 
 
     double gradient_left = (double)(left_image[index_left + 1] - left_image[index_left - 1]) / 2.0;
     double gradient_right = (double)(right_image[index_right + 1] - right_image[index_right - 1]) / 2.0;
     double gradient_difference = fabs( gradient_left - gradient_right);
-    gradient_difference = (gradient_difference < t2) ? gradient_difference : t2;
-  
+    if(gradient_difference > t2){
+        gradient_difference = t2;
+    }
+    
     double cost = (double)color_difference / t1 + weight * gradient_difference / t2; 
 
     output_cost[output_index] = cost;
