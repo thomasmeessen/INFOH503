@@ -1,5 +1,5 @@
 
-kernel void cost_volume_in_range(global unsigned char *left_image, global unsigned char *right_image, global float *output_cost, int padding_size, float weight, float t1, float t2){
+kernel void cost_volume_in_range(global unsigned char *left_image, global unsigned char *right_image, global double *output_cost, int padding_size, double weight, double t1, double t2){
     // Disparity start at 1 and the id at 0
     const int disparity = get_global_id(2) +1;
     // Index for the input image
@@ -23,17 +23,16 @@ kernel void cost_volume_in_range(global unsigned char *left_image, global unsign
     const int output_disparity_offset = out_row_size* out_col_size * get_global_id(2);
     const int output_index = out_col +  out_row * out_row_size + output_disparity_offset ;
 
-    int color_difference =  abs(left_image[index_left] - right_image[index_right]);
-    color_difference = (color_difference < t1) ? color_difference : (int)t1;
+    double color_difference =  abs(left_image[index_left] - right_image[index_right]);
+    color_difference = (color_difference < t1) ? color_difference : t1;
 
 
-    float gradient_left = (float)(left_image[index_left + 1] - left_image[index_left - 1]) / 2.0;
-    float gradient_right = (float)(right_image[index_right + 1] - right_image[index_right - 1]) / 2.0;
-    float gradient_difference = fabs( gradient_left - gradient_right);
+    double gradient_left = (double)(left_image[index_left + 1] - left_image[index_left - 1]) / 2.0;
+    double gradient_right = (double)(right_image[index_right + 1] - right_image[index_right - 1]) / 2.0;
+    double gradient_difference = fabs( gradient_left - gradient_right);
     gradient_difference = (gradient_difference < t2) ? gradient_difference : t2;
-
-    float cost = (float)color_difference / t1 + weight * gradient_difference / t2;
-
+  
+    double cost = (double)color_difference / t1 + weight * gradient_difference / t2; 
 
     output_cost[output_index] = cost;
 

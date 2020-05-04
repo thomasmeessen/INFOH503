@@ -54,14 +54,14 @@ struct Opencl_buffer {
     }
 
     /**
-     * Create a float buffer initialized with 0
+     * Create a double buffer initialized with 0
      * @param rows
      * @param cols
      */
     Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff): cols(cols), rows(rows){
-        cv::Mat zero_matrix = cv::Mat::zeros(rows, cols, CV_32FC1);
+        cv::Mat zero_matrix = cv::Mat::zeros(rows, cols, CV_64FC1);
         buffer_size = zero_matrix.total() * zero_matrix.elemSize();
-        type = CV_32FC1;
+        type = CV_64FC1;
         buffer = clCreateBuffer(ocl_stuff.context,CL_MEM_COPY_HOST_PTR ,
                                 buffer_size,
                                 (void*)zero_matrix.data, NULL);
@@ -174,7 +174,7 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     int height = left_image_padded.rows - 2 * max_distance;
 
 
-    cv::Mat final_image = cv::Mat(costBuffer.rows, costBuffer.cols, CV_32FC1);
+    cv::Mat final_image = cv::Mat(costBuffer.rows, costBuffer.cols, CV_64FC1);
 
     cv::Mat cost_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, costBuffer.type);
 
@@ -193,8 +193,8 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
         (void*)left_image_padded.data, NULL);
 
 
-    cv::Mat output_a_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_32FC1);
-    cv::Mat output_b_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_32FC1);
+    cv::Mat output_a_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_64FC1);
+    cv::Mat output_b_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_64FC1);
 
 
 
@@ -265,7 +265,7 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     }
 
     //Seconde pass
-    cv::Mat guidedFilter_image = cv::Mat((left_image_padded.rows - 2*max_distance)*max_distance, left_image_padded.cols- 2*max_distance, CV_32FC1);
+    cv::Mat guidedFilter_image = cv::Mat((left_image_padded.rows - 2*max_distance)*max_distance, left_image_padded.cols- 2*max_distance, CV_64FC1);
 
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
@@ -295,7 +295,7 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     // - Packing Results
     Opencl_buffer result;
     result.buffer = guidedFilter_image_buffer;
-    result.type = CV_32FC1;
+    result.type = CV_64FC1;
     result.buffer_size = guidedFilter_image.total() * guidedFilter_image.elemSize();
     result.cols = guidedFilter_image.cols;
     result.rows = guidedFilter_image.rows;
@@ -381,14 +381,14 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     // - Padding
     int padding_size = disparity_range;
 
-    float alpha_weight = 0.5;
-    float t1 = 7.;//tau 1
-    float t2 = 2.;//tau 2 later add as parameter function
+    double alpha_weight = 0.9;
+    double t1 = 7.;//tau 1
+    double t2 = 2.;//tau 2 later add as parameter function
 
     Opencl_buffer left_image_buffer(left_source_image_path, ocl_stuff);
     Opencl_buffer right_image_buffer(right_source_image_path, ocl_stuff);
 
-    cv::Mat output_cost = cv::Mat::zeros((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size , CV_32FC1);// we generate all layers
+    cv::Mat output_cost = cv::Mat::zeros((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size , CV_64FC1);// we generate all layers
 
 
     // - Allocating the buffers
@@ -424,7 +424,7 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     // - Packing Results
     Opencl_buffer result;
     result.buffer = cost_output_buffer;
-    result.type = CV_32FC1;
+    result.type = CV_64FC1;
     result.buffer_size = output_cost.total() * output_cost.elemSize();
     result.cols = output_cost.cols;
     result.rows = output_cost.rows;
