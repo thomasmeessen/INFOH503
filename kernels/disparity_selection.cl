@@ -10,7 +10,7 @@ kernel void memset( global float* cost, int disparity_range, __global float* out
     const int image_size = get_global_size(0)*get_global_size(1);
 
     float current_min_cost = cost[pixel];
-    int current_best_disparity = 1;
+    int current_best_disparity = 0;
     for (int i = 1; i < disparity_range; i++){
         if(cost[pixel+i*image_size] < current_min_cost){
             current_min_cost = cost[pixel+i*image_size];
