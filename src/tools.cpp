@@ -474,16 +474,17 @@ Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, c
     return output_buffer;
 }
 
-Opencl_buffer left_right_consistency(){
-    const int image_width = filtered_cost.cols;
-    const int image_height = filtered_cost.rows / disparity_range; // cause disparity layers
+Opencl_buffer left_right_consistency(Opencl_buffer left_depth_map, Opencl_buffer right_depth_map, cl_kernel kernel, Opencl_stuff ocl_stuff){
+    const int image_width = left_depth_map.cols;
+    const int image_height = left_depth_map.rows; 
 
     Opencl_buffer output_buffer (image_height, image_width, ocl_stuff);
     
-    clSetKernelArg(kernel, 0, sizeof(filtered_cost.buffer), (void*)&filtered_cost.buffer);
-    clSetKernelArg(kernel, 1, sizeof(disparity_range), (void*)&disparity_range);
+    clSetKernelArg(kernel, 0, sizeof(left_depth_map.buffer), (void*)&left_depth_map.buffer);
+    clSetKernelArg(kernel, 1, sizeof(right_depth_map.buffer), (void*)&right_depth_map.buffer);
     clSetKernelArg(kernel, 2, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
-    size_t global_work_size_image[] = { (size_t)image_width, (size_t)image_height };
+   
+    size_t global_work_size_image[] = { (size_t)image_width, (size_t)image_height }; 
     clEnqueueNDRangeKernel(ocl_stuff.queue,
         kernel,
         2,
@@ -492,10 +493,6 @@ Opencl_buffer left_right_consistency(){
         NULL,
         0,
         NULL, NULL);
-    // - Waiting end execution
-
     clFinish(ocl_stuff.queue);
-
     return output_buffer;
-
 }
