@@ -17,5 +17,5 @@ Opencl_buffer cost_range_layer(cv::Mat, cv::Mat, int, cl_device_id, cl_context, 
 Opencl_buffer cost_range_layer(cv::Mat, cv::Mat, int, Opencl_stuff);
 Opencl_buffer cost_selection(Opencl_buffer, int, cl_kernel, Opencl_stuff, const std::string*);
 Opencl_buffer left_right_consistency(Opencl_buffer, Opencl_buffer, cl_kernel, Opencl_stuff);
-
+void densification(Opencl_buffer , Opencl_buffer, cl_kernel, Opencl_stuff);
 #endif

@@ -496,3 +496,20 @@ Opencl_buffer left_right_consistency(Opencl_buffer left_depth_map, Opencl_buffer
     clFinish(ocl_stuff.queue);
     return output_buffer;
 }
+
+void densification(Opencl_buffer left_depth_map, Opencl_buffer consistent_depth_map, cl_kernel kernel, Opencl_stuff ocl_stuff){
+    
+    clSetKernelArg(kernel, 0, sizeof(left_depth_map.buffer), (void*)&left_depth_map.buffer);
+    clSetKernelArg(kernel, 1, sizeof(consistent_depth_map.buffer), (void*)&consistent_depth_map.buffer);
+   
+    size_t global_work_size_image[] = { (size_t)left_depth_map.cols, (size_t)left_depth_map.cols }; 
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+    clFinish(ocl_stuff.queue);
+}

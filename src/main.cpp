@@ -10,7 +10,7 @@
 using namespace std;
 
 
-#define MAX_DISTANCE 30 // maximum differnenc in pixel
+#define MAX_DISTANCE 16 // maximum differnenc in pixel
 
 
 
@@ -21,6 +21,7 @@ const string guidedFilter_source_path = "guidedFilterStart.cl";
 const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
+const string densification_source_path = "densification.cl";
 const string left_image_path = "paper1.png";
 const string right_image_path = "paper0.png";
 //const string left_image_path = "classroom_l.png";
@@ -31,11 +32,13 @@ cl_program guidedFilterStart_program;
 cl_program guidedFilterEnd_program;
 cl_program disparity_selection_program;
 cl_program left_right_consistency_program;
+cl_program densification_program;
 cl_kernel cost_volume_kernel;
 cl_kernel guidedFilter_kernel;
 cl_kernel guidedFilterEnd_kernel;
 cl_kernel disparity_selection_kernel;
 cl_kernel left_right_consistency_kernel;
+cl_kernel densification_kernel;
 Opencl_stuff ocl_stuff;
 
 void set_up(){
@@ -94,26 +97,31 @@ void compile_sources(){
     if(error != CL_SUCCESS)
         printf("error with left right consistency with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
+    compile_source(&densification_source_path, &densification_program, ocl_stuff.device, ocl_stuff.context);
+    densification_kernel = clCreateKernel(densification_program, "densification", &error);
+    if(error != CL_SUCCESS)
+        printf("error with left right consistency with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
 }
 
 Opencl_buffer compute_depth_map(const string &base_image_path, const string &compared_image_path, int disparity){
-    string indicator = "L"; // Left image
+    string indicator = (disparity < 0) ? "R" : "L";
+
     int disparity_sign = disparity/abs(disparity);
     cv::Mat base_source_image = cv::imread(base_image_path, cv::IMREAD_GRAYSCALE);
 
     Opencl_buffer cost_layer = cost_range_layer(base_image_path, compared_image_path, MAX_DISTANCE, disparity_sign, cost_volume_kernel, ocl_stuff);
-    Opencl_buffer filtered_cost = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &base_image_path);
-    Opencl_buffer depth_map = cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &base_image_path);
-    
-    if(disparity < 0)
-        indicator = "R";
     cost_layer.write_img("Cost_for_layer_normalized_" + indicator + "_.png", ocl_stuff, true);
+    
     printf("Cost %s done\n", indicator.c_str());
+    Opencl_buffer filtered_cost = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &base_image_path);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png" , ocl_stuff, true);
     printf("Filtering %s done\n", indicator.c_str());
+    
+    Opencl_buffer depth_map = cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &base_image_path);
     depth_map.write_img("depth_map_" + indicator + "_" + base_image_path, ocl_stuff, true);
     printf("Depth map %s done \n", indicator.c_str());
+    
     return depth_map;
 }
 
@@ -128,8 +136,9 @@ int main(int argc, char** argv)
     printf("Left Right consistency done\n");
     consistent_depth_map.write_img((string)"consistentcy_output.png", ocl_stuff, true);
     
-    //densification(consistent_depht_map);
-    
+    densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
+    printf("densification/filling done\n");
+    left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);
 
     return 0;
 }
