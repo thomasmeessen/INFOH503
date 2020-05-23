@@ -413,3 +413,4 @@ Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, c
 
     return output_buffer;
 }
+

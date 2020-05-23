@@ -13,6 +13,7 @@ struct Opencl_buffer {
     cl_mem buffer;
     std::size_t buffer_size;
     int cols, rows, type;
+    static int used_memory;
 
     void write_img(std::string path_to_write, Opencl_stuff ocl_stuff, bool to_normalize);
 
@@ -27,6 +28,17 @@ struct Opencl_buffer {
      * @param cols
      */
     Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff);
+
+private:
+    /**
+     * Wrapper around opencl allocate buffer for memory management
+     * @param ocl_stuff
+     */
+    cl_mem allocate_buffer(Opencl_stuff ocl_stuff,
+                         cl_mem_flags /* flags */,
+                         size_t       /* size */,
+                         void *       /* host_ptr */,
+                         cl_int *     /* errcode_ret */);
 };
 
 

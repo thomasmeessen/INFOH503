@@ -34,7 +34,7 @@ Opencl_buffer::Opencl_buffer(const string & image_path, Opencl_stuff ocl_stuff){
         buffer_size = image.total() * image.elemSize();
 
         // - Allocating the buffers
-        buffer = clCreateBuffer(ocl_stuff.context,
+        buffer = allocate_buffer(ocl_stuff,
                                 CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
                                 buffer_size,
                                 (void*)image.data, NULL);
@@ -45,7 +45,11 @@ Opencl_buffer::Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff): cols(c
         cv::Mat zero_matrix = cv::Mat::zeros(rows, cols, CV_32FC1);
         buffer_size = zero_matrix.total() * zero_matrix.elemSize();
         type = CV_32FC1;
-        buffer = clCreateBuffer(ocl_stuff.context,CL_MEM_COPY_HOST_PTR ,
+        buffer = allocate_buffer(ocl_stuff,CL_MEM_COPY_HOST_PTR ,
                                 buffer_size,
                                 (void*)zero_matrix.data, NULL);
     }
+
+cl_mem Opencl_buffer::allocate_buffer(Opencl_stuff ocl_stuff, cl_mem_flags flags, size_t size, void * data, cl_int * clInt) {
+    return clCreateBuffer(ocl_stuff.context, flags , buffer_size, data, clInt);
+}
