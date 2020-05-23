@@ -11,7 +11,7 @@
 
 using namespace std;
 
-
+#define MAX_DISTANCE 16 // maximum differnenc in pixel
 
 
 
