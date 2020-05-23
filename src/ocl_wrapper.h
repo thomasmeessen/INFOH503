@@ -2,17 +2,40 @@
 #define CL_INFOH503_OCL_WRAPPER_H
 #include <CL/cl.h>
 #include <string>
+#include <iostream>
+#include <exception>
 
 struct Opencl_stuff {
     cl_device_id device;
     cl_context context;
     cl_command_queue queue;
+    /** Device global available memory in byte **/
+    cl_ulong memory_available;
+};
+
+struct Out_of_memory_exception : public std::exception{
+    cl_ulong available;
+    cl_ulong used;
+
+    Out_of_memory_exception(cl_ulong available, cl_ulong used): available(available), used(used){};
+
+    const char *what() const noexcept override {
+        std::string message = "Trying to allocate more memory: " +
+                std::to_string((unsigned long long)used) +
+                " than available: " +
+                std::to_string((unsigned long long) available);
+        std::cout << message <<std::endl;
+        // return  message.c_str();
+        // This line fail to encode properly the message
+        return "Trying to allocate more memory than available";
+    }
 };
 
 struct Opencl_buffer {
     cl_mem buffer;
     std::size_t buffer_size;
     int cols, rows, type;
+    /** Device global memory usage in byte **/
     static int used_memory;
 
     void write_img(std::string path_to_write, Opencl_stuff ocl_stuff, bool to_normalize);
@@ -28,6 +51,10 @@ struct Opencl_buffer {
      * @param cols
      */
     Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff);
+
+    void free();
+
+
 
 private:
     /**

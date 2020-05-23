@@ -137,16 +137,16 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     clEnqueueReadBuffer(ocl_stuff.queue,
             costBuffer.buffer,
             CL_TRUE,
-            NULL,
+            0,
             costBuffer.buffer_size,
-            (void*)cost_list.data, NULL, NULL, NULL);
+            (void*)cost_list.data, 0, nullptr, nullptr);
 
     int image_1D_size = left_image_padded.total() * left_image_padded.elemSize();
 
     cl_mem buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)left_image_padded.data, NULL);
+        (void*)left_image_padded.data, nullptr);
 
 
     cv::Mat output_a_k_list = cv::Mat(left_image_padded.rows * max_distance, left_image_padded.cols, CV_32FC1);
@@ -158,17 +158,17 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     cl_mem output_a_k_buffer_list = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         output_a_k_list.total() * output_a_k_list.elemSize(),
-        (void*)output_a_k_list.data, NULL);
+        (void*)output_a_k_list.data, nullptr);
 
     cl_mem output_b_k_buffer_list = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         output_b_k_list.total() * output_b_k_list.elemSize(),
-        (void*)output_b_k_list.data, NULL);
+        (void*)output_b_k_list.data, nullptr);
 
     cl_mem cost_buffer_list = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         cost_list.total() * cost_list.elemSize(),
-        (void*)cost_list.data, NULL);
+        (void*)cost_list.data, nullptr);
 
 
     // 6. Launch the kernel. Let OpenCL pick the local work size.
@@ -185,11 +185,11 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     clEnqueueNDRangeKernel(queue,
         kernel,
         3,
-        NULL,
+        nullptr,
         global_work_size_image,
-        NULL,
+        nullptr,
         0,
-        NULL, NULL);
+        nullptr, nullptr);
 
     clFinish(queue); // syncing
 
@@ -198,17 +198,17 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     clEnqueueReadBuffer(queue,
         output_a_k_buffer_list,
         CL_TRUE,
-        NULL,
+        0,
         output_a_k_list.total()* output_a_k_list.elemSize(),
-        (void*)output_a_k_list.data, NULL, NULL, NULL);
+        (void*)output_a_k_list.data, 0, nullptr, nullptr);
 
 
     clEnqueueReadBuffer(queue,
         output_b_k_buffer_list,
         CL_TRUE,
-        NULL,
+        0,
         output_b_k_list.total()* output_b_k_list.elemSize(),
-        (void*)output_b_k_list.data, NULL, NULL, NULL);
+        (void*)output_b_k_list.data, 0, nullptr, nullptr);
 
     if (image_path != NULL) {
         string output_name_a_k = "guided_a_k_normalized_" + *image_path;
@@ -226,7 +226,7 @@ Opencl_buffer guidedFilter(cv::Mat& left_source_image, int max_distance, cl_cont
     cl_mem guidedFilter_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         guidedFilter_image.total()*guidedFilter_image.elemSize(),
-        (void*)guidedFilter_image.data, NULL);
+        (void*)guidedFilter_image.data, nullptr);
 
     clSetKernelArg(kernel0, 0, sizeof(buffer), (void*)&buffer);
     clSetKernelArg(kernel0, 1, sizeof(output_a_k_buffer_list), (void*)&output_a_k_buffer_list);
@@ -275,20 +275,20 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
     cl_mem left_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)left_image.data, NULL);
+        (void*)left_image.data, nullptr);
     clSetKernelArg(kernel, 0, sizeof(left_image_buffer), (void*)&left_image_buffer);//https://stackoverflow.com/a/22101104
 
     cl_mem right_image_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         image_1D_size,
-        (void*)right_image.data, NULL);
+        (void*)right_image.data, nullptr);
 
     clSetKernelArg(kernel, 1, sizeof(right_image_buffer), (void*)&right_image_buffer);//https://stackoverflow.com/a/22101104
 
     cl_mem destination_buffer = clCreateBuffer(context,
         CL_MEM_COPY_HOST_PTR,
         output_size,
-        (void*)output_image.data, NULL);
+        (void*)output_image.data, nullptr);
 
     clSetKernelArg(kernel, 2, sizeof(destination_buffer), (void*)&destination_buffer);
     clSetKernelArg(kernel, 3, sizeof(original_height), &original_height);//set width value
@@ -302,11 +302,11 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
     clEnqueueNDRangeKernel(queue,
         kernel,
         2,
-        NULL,
+        nullptr,
         global_work_size_image,
-        NULL,
+        nullptr,
         0,
-        NULL, NULL);
+        nullptr, nullptr);
 
     clFinish(queue); // syncing
 
@@ -314,9 +314,9 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
     clEnqueueReadBuffer(queue,
         destination_buffer,
         CL_TRUE,
-        NULL,
+        0,
         output_size,
-        (void*)output_image.data, NULL, NULL, NULL);
+        (void*)output_image.data, 0, nullptr, nullptr);
     if (write_to_png) {
         cv::imwrite("img_diff.png", output_image);
     }
@@ -338,20 +338,13 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     Opencl_buffer left_image_buffer(left_source_image_path, ocl_stuff);
     Opencl_buffer right_image_buffer(right_source_image_path, ocl_stuff);
 
-    cv::Mat output_cost = cv::Mat::zeros((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size , CV_32FC1);// we generate all layers
-
-
-    // - Allocating the buffers
-
-    cl_mem cost_output_buffer = clCreateBuffer(ocl_stuff.context,
-                                               CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-                                               output_cost.total() * output_cost.elemSize(),
-                                               (void*)output_cost.data, NULL);
+    // Allcoating a buffer with 0
+    Opencl_buffer cost_output_buffer ((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size, ocl_stuff);
 
     // - Passing arguments to the kernel
     clSetKernelArg(cost_volume_kernel, 0, sizeof(left_image_buffer.buffer), (void*)&left_image_buffer.buffer);
     clSetKernelArg(cost_volume_kernel, 1, sizeof(right_image_buffer.buffer), (void*)&right_image_buffer.buffer);
-    clSetKernelArg(cost_volume_kernel, 2, sizeof(cost_output_buffer), (void*)&cost_output_buffer);
+    clSetKernelArg(cost_volume_kernel, 2, sizeof(cost_output_buffer.buffer), (void*)&cost_output_buffer.buffer);
     clSetKernelArg(cost_volume_kernel, 3, sizeof(padding_size), (void*)&padding_size);
     clSetKernelArg(cost_volume_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
     clSetKernelArg(cost_volume_kernel, 5, sizeof(t1), (void*)&t1);
@@ -372,14 +365,7 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     // - Waiting end execution
     clFinish(ocl_stuff.queue);
 
-    // - Packing Results
-    Opencl_buffer result;
-    result.buffer = cost_output_buffer;
-    result.type = CV_32FC1;
-    result.buffer_size = output_cost.total() * output_cost.elemSize();
-    result.cols = output_cost.cols;
-    result.rows = output_cost.rows;
-    return  result;
+    return  cost_output_buffer;
 }
 
 

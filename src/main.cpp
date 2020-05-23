@@ -45,30 +45,31 @@ Opencl_stuff ocl_stuff;
 void set_up(){
     // 1. Get a platform.
     cl_platform_id platform;
-    clGetPlatformIDs(1, &platform, NULL);
+    clGetPlatformIDs(1, &platform, nullptr);
 
     // 2. Find a gpu device.
     cl_device_id device;
     clGetDeviceIDs(platform,
         CL_DEVICE_TYPE_GPU,
         1,
-        &device, NULL);
+        &device, nullptr);
     print_device_info(device);
 
     // 3. Create a context and command queue on that device.
-    cl_context context = clCreateContext(NULL,
+    cl_context context = clCreateContext(nullptr,
         1,
         &device,
-        NULL, NULL, NULL);
+        nullptr, nullptr, nullptr);
 
-    cl_command_queue queue = clCreateCommandQueue(context,
+    cl_command_queue queue = clCreateCommandQueueWithProperties(context,
         device,
-        0, NULL);
+        nullptr, nullptr);
 
     ocl_stuff.device = device;
     ocl_stuff.context = context;
     ocl_stuff.queue = queue;
-
+    // Used for throwing error when allocating more than available
+    clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(ocl_stuff.memory_available), &ocl_stuff.memory_available, nullptr);
 }
 void compile_sources(){
     cl_int error;
@@ -118,6 +119,7 @@ Opencl_buffer compute_depth_map(const string &base_image_path, const string &com
     Opencl_buffer filtered_cost = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &base_image_path);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png" , ocl_stuff, true);
     printf("Filtering %s done\n", indicator.c_str());
+    cost_layer.free();
     
     Opencl_buffer depth_map = cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &base_image_path);
     depth_map.write_img("depth_map_" + indicator + "_" + base_image_path, ocl_stuff, true);
@@ -140,6 +142,5 @@ int main(int argc, char** argv)
     densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
     printf("densification/filling done\n");
     left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);
-
     return 0;
 }
