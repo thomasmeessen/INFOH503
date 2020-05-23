@@ -25,9 +25,16 @@ void Opencl_buffer::write_img(string path_to_write, Opencl_stuff ocl_stuff, bool
     }
 
 
-Opencl_buffer::Opencl_buffer(const string & image_path, Opencl_stuff ocl_stuff){
+Opencl_buffer::Opencl_buffer(const string &image_path, Opencl_stuff ocl_stuff, int padding_size = 0) {
         // - Image Loading
         cv::Mat image = cv::imread(image_path, cv::IMREAD_GRAYSCALE);
+        // - Image padding
+        if( padding_size != 0){
+            cv::Rect extract_zone (padding_size, padding_size, image.cols, image.rows);
+            cv::Mat image_padded = cv::Mat::zeros(image.rows + 2 * padding_size, image.cols + 2 * padding_size, image.type());
+            image.copyTo(image_padded(extract_zone));
+            image = image_padded;
+        }
         // - Setting parameters
         cols = image.cols;
         rows = image.rows;

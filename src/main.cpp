@@ -111,19 +111,18 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
     string indicator = Movement_direction::L_to_r == dir ? "L" : "R";
     int disparity_sign = Movement_direction::L_to_r == dir ? -1 : 1;
 
-    cv::Mat base_source_image = cv::imread(start_image_path, cv::IMREAD_GRAYSCALE);
-
-    Opencl_buffer cost_layer = cost_range_layer(start_image_path, end_image_path, disparity_range, cost_volume_kernel,
-                                                ocl_stuff, disparity_sign);
-    cost_layer.write_img("Cost_for_layer_normalized_" + indicator + "_.png", ocl_stuff, true);
+    Opencl_buffer cost_volume = cost_range_layer(start_image_path, end_image_path, disparity_range, cost_volume_kernel,
+                                                 ocl_stuff, disparity_sign);
+    cost_volume.write_img("Cost_for_layer_normalized_" + indicator + "_.png", ocl_stuff, true);
     
     printf("Cost %s done\n", indicator.c_str());
-    Opencl_buffer filtered_cost = guidedFilter(base_source_image, disparity_range, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &start_image_path);
+    Opencl_buffer filtered_cost = guidedFilter(start_image_path, disparity_range, guidedFilter_kernel,
+                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png" , ocl_stuff, true);
     printf("Filtering %s done\n", indicator.c_str());
-    cost_layer.free();
+    cost_volume.free();
     
-    Opencl_buffer depth_map = cost_selection(filtered_cost, disparity_range, disparity_selection_kernel, ocl_stuff, &start_image_path);
+    Opencl_buffer depth_map = cost_selection(filtered_cost, disparity_range, disparity_selection_kernel, ocl_stuff);
     depth_map.write_img("depth_map_" + indicator + "_" + start_image_path, ocl_stuff, true);
     printf("Depth map %s done \n", indicator.c_str());
     
