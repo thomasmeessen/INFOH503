@@ -6,6 +6,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include "tools.cpp"
+#include "ocl_wrapper.h"
 
 using namespace std;
 

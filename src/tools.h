@@ -2,10 +2,8 @@
 #define TOOLS_HEADER_FILE
 
 #include <string>
+#include "ocl_wrapper.h"
 
-
-struct Opencl_buffer;
-struct Opencl_stuff;
 
 void print_device_info(cl_device_id);
 void show_build_error(const std::string*, cl_program*, cl_device_id);
