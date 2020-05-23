@@ -2,6 +2,7 @@
 #include <CL/cl.h>
 #include <iostream>
 #include <vector>
+#include <string>
 #include <fstream>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -11,7 +12,6 @@
 using namespace std;
 
 
-#define MAX_DISTANCE 16 // maximum differnenc in pixel
 
 
 
