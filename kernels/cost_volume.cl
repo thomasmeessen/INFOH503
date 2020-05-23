@@ -1,7 +1,7 @@
 
 kernel void cost_volume_in_range(global unsigned char *left_image, global unsigned char *right_image, global float *output_cost, int padding_size, float weight, float t1, float t2, int disparity_sign){
     // Disparity start at 1 and the id at 0
-    const int disparity = (get_global_id(2) +1)*disparity_sign;
+    const int disparity = get_global_id(2)*disparity_sign;
     // Index for the input image
     // - thread info
     const int in_col = get_global_id(0);
