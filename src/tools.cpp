@@ -326,7 +326,8 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 
 
-Opencl_buffer cost_range_layer(const string &left_source_image_path,const string &right_source_image_path, int disparity_range, int disparity_sign, cl_kernel cost_volume_kernel, Opencl_stuff ocl_stuff)  {
+Opencl_buffer cost_range_layer(const string &start_image_path, const string &end_image_path, int disparity_range,
+                               cl_kernel cost_volume_kernel, Opencl_stuff ocl_stuff, int disparity_sign) {
 
 
     // - Padding
@@ -335,15 +336,15 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     float t1 = 7.;//tau 1
     float t2 = 2.;//tau 2 later add as parameter function
 
-    Opencl_buffer left_image_buffer(left_source_image_path, ocl_stuff);
-    Opencl_buffer right_image_buffer(right_source_image_path, ocl_stuff);
+    Opencl_buffer start_image(start_image_path, ocl_stuff);
+    Opencl_buffer end_image(end_image_path, ocl_stuff);
 
     // Allcoating a buffer with 0
-    Opencl_buffer cost_output_buffer ((left_image_buffer.rows + 2 * padding_size) * disparity_range, left_image_buffer.cols + 2 * padding_size, ocl_stuff);
+    Opencl_buffer cost_output_buffer ((start_image.rows + 2 * padding_size) * disparity_range, start_image.cols + 2 * padding_size, ocl_stuff);
 
     // - Passing arguments to the kernel
-    clSetKernelArg(cost_volume_kernel, 0, sizeof(left_image_buffer.buffer), (void*)&left_image_buffer.buffer);
-    clSetKernelArg(cost_volume_kernel, 1, sizeof(right_image_buffer.buffer), (void*)&right_image_buffer.buffer);
+    clSetKernelArg(cost_volume_kernel, 0, sizeof(start_image.buffer), (void*)&start_image.buffer);
+    clSetKernelArg(cost_volume_kernel, 1, sizeof(end_image.buffer), (void*)&end_image.buffer);
     clSetKernelArg(cost_volume_kernel, 2, sizeof(cost_output_buffer.buffer), (void*)&cost_output_buffer.buffer);
     clSetKernelArg(cost_volume_kernel, 3, sizeof(padding_size), (void*)&padding_size);
     clSetKernelArg(cost_volume_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
@@ -352,7 +353,7 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     clSetKernelArg(cost_volume_kernel, 7, sizeof(disparity_sign),  (void*)&disparity_sign);
 
     // - Enqueuing kernel
-    size_t global_work_size_cost_layer[] = { (size_t)left_image_buffer.cols , (size_t)left_image_buffer.rows, (size_t)disparity_range };
+    size_t global_work_size_cost_layer[] = {(size_t)start_image.cols , (size_t)start_image.rows, (size_t)disparity_range };
     clEnqueueNDRangeKernel(ocl_stuff.queue,
                            cost_volume_kernel,
                            3,

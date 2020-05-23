@@ -23,8 +23,8 @@ const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
 const string densification_source_path = "densification.cl";
-const string left_image_path = "paper1.png";
-const string right_image_path = "paper0.png";
+const string left_image_path = "paper0.png";
+const string right_image_path = "paper1.png";
 //const string left_image_path = "classroom_l.png";
 //const string right_image_path = "classroom_r.png";
 const string cost_by_layer_source_path = "cost_volume.cl";
@@ -106,23 +106,25 @@ void compile_sources(){
 
 }
 
-Opencl_buffer compute_depth_map(const string &base_image_path, const string &compared_image_path, int disparity){
-    string indicator = (disparity < 0) ? "R" : "L";
 
-    int disparity_sign = disparity/abs(disparity);
-    cv::Mat base_source_image = cv::imread(base_image_path, cv::IMREAD_GRAYSCALE);
+Opencl_buffer compute_depth_map(const string &start_image_path, const string &end_image_path, int disparity_range, Movement_direction dir ){
+    string indicator = Movement_direction::L_to_r == dir ? "L" : "R";
+    int disparity_sign = Movement_direction::L_to_r == dir ? -1 : 1;
 
-    Opencl_buffer cost_layer = cost_range_layer(base_image_path, compared_image_path, MAX_DISTANCE, disparity_sign, cost_volume_kernel, ocl_stuff);
+    cv::Mat base_source_image = cv::imread(start_image_path, cv::IMREAD_GRAYSCALE);
+
+    Opencl_buffer cost_layer = cost_range_layer(start_image_path, end_image_path, disparity_range, cost_volume_kernel,
+                                                ocl_stuff, disparity_sign);
     cost_layer.write_img("Cost_for_layer_normalized_" + indicator + "_.png", ocl_stuff, true);
     
     printf("Cost %s done\n", indicator.c_str());
-    Opencl_buffer filtered_cost = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &base_image_path);
+    Opencl_buffer filtered_cost = guidedFilter(base_source_image, disparity_range, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &start_image_path);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png" , ocl_stuff, true);
     printf("Filtering %s done\n", indicator.c_str());
     cost_layer.free();
     
-    Opencl_buffer depth_map = cost_selection(filtered_cost, MAX_DISTANCE, disparity_selection_kernel, ocl_stuff, &base_image_path);
-    depth_map.write_img("depth_map_" + indicator + "_" + base_image_path, ocl_stuff, true);
+    Opencl_buffer depth_map = cost_selection(filtered_cost, disparity_range, disparity_selection_kernel, ocl_stuff, &start_image_path);
+    depth_map.write_img("depth_map_" + indicator + "_" + start_image_path, ocl_stuff, true);
     printf("Depth map %s done \n", indicator.c_str());
     
     return depth_map;
@@ -132,8 +134,8 @@ int main(int argc, char** argv)
 {
     set_up();
     compile_sources();
-    Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE);  // must return depth map
-    Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, -MAX_DISTANCE);
+    Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
+    Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, MAX_DISTANCE, Movement_direction::R_to_l);
 
     Opencl_buffer consistent_depth_map = left_right_consistency(left_depth_map, right_depth_map, left_right_consistency_kernel, ocl_stuff);
     printf("Left Right consistency done\n");
