@@ -70,5 +70,6 @@ cl_mem Opencl_buffer::allocate_buffer(Opencl_stuff ocl_stuff, cl_mem_flags flags
 }
 
 void Opencl_buffer::free() {
+    used_memory -= (int) buffer_size;
     clReleaseMemObject(buffer);
 }

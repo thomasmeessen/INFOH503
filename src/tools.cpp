@@ -178,6 +178,11 @@ guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_k
 
     clFinish(ocl_stuff.queue); // syncing
 
+    // - Freeing memory
+    a_k_buffer.free();
+    b_k_buffer.free();
+    guiding_image_buffer.free();
+
     return  output_filter_buffer;
 }
 
@@ -287,6 +292,9 @@ Opencl_buffer cost_range_layer(const string &start_image_path, const string &end
     // - Waiting end execution
     clFinish(ocl_stuff.queue);
 
+    //- Freeing memory
+    start_image.free();
+    end_image.free();
     return  cost_output_buffer;
 }
 

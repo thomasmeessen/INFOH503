@@ -23,10 +23,10 @@ const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
 const string densification_source_path = "densification.cl";
-const string left_image_path = "paper0.png";
-const string right_image_path = "paper1.png";
-//const string left_image_path = "classroom_l.png";
-//const string right_image_path = "classroom_r.png";
+//const string left_image_path = "paper0.png";
+//const string right_image_path = "paper1.png";
+const string left_image_path = "classroom_l.png";
+const string right_image_path = "classroom_r.png";
 const string cost_by_layer_source_path = "cost_volume.cl";
 cl_program cost_by_layer_program;
 cl_program guidedFilterStart_program;
@@ -125,6 +125,7 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
     Opencl_buffer depth_map = cost_selection(filtered_cost, disparity_range, disparity_selection_kernel, ocl_stuff);
     depth_map.write_img("depth_map_" + indicator + "_" + start_image_path, ocl_stuff, true);
     printf("Depth map %s done \n", indicator.c_str());
+    filtered_cost.free();
     
     return depth_map;
 }
