@@ -326,18 +326,12 @@ void image_difference(cv::Mat& left_image, cv::Mat& right_image, cv::Mat& output
 
 
 
-Opencl_buffer cost_range_layer(const string &left_source_image_path,const string &right_source_image_path, int disparity_range, Opencl_stuff ocl_stuff)  {
+Opencl_buffer cost_range_layer(const string &left_source_image_path,const string &right_source_image_path, int disparity_range, int disparity_sign, cl_kernel cost_volume_kernel, Opencl_stuff ocl_stuff)  {
 
-    const string cost_by_layer_source_path = "cost_volume.cl";
-    // - Kernel Compilation
-    cl_program cost_by_layer_program;
-    compile_source(&cost_by_layer_source_path, &cost_by_layer_program, ocl_stuff.device, ocl_stuff.context);
-    cl_kernel cost_volume_kernel = clCreateKernel(cost_by_layer_program, "cost_volume_in_range", NULL);
 
     // - Padding
     int padding_size = disparity_range;
-
-    float alpha_weight = 0.5;
+    float alpha_weight = 0.9;
     float t1 = 7.;//tau 1
     float t2 = 2.;//tau 2 later add as parameter function
 
@@ -362,6 +356,7 @@ Opencl_buffer cost_range_layer(const string &left_source_image_path,const string
     clSetKernelArg(cost_volume_kernel, 4, sizeof(alpha_weight), (void*)&alpha_weight);
     clSetKernelArg(cost_volume_kernel, 5, sizeof(t1), (void*)&t1);
     clSetKernelArg(cost_volume_kernel, 6, sizeof(t2), (void*)&t2);
+    clSetKernelArg(cost_volume_kernel, 7, sizeof(disparity_sign),  (void*)&disparity_sign);
 
     // - Enqueuing kernel
     size_t global_work_size_cost_layer[] = { (size_t)left_image_buffer.cols , (size_t)left_image_buffer.rows, (size_t)disparity_range };
@@ -414,3 +409,42 @@ Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, c
     return output_buffer;
 }
 
+Opencl_buffer left_right_consistency(Opencl_buffer left_depth_map, Opencl_buffer right_depth_map, cl_kernel kernel, Opencl_stuff ocl_stuff){
+    const int image_width = left_depth_map.cols;
+    const int image_height = left_depth_map.rows; 
+
+    Opencl_buffer output_buffer (image_height, image_width, ocl_stuff);
+    
+    clSetKernelArg(kernel, 0, sizeof(left_depth_map.buffer), (void*)&left_depth_map.buffer);
+    clSetKernelArg(kernel, 1, sizeof(right_depth_map.buffer), (void*)&right_depth_map.buffer);
+    clSetKernelArg(kernel, 2, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
+   
+    size_t global_work_size_image[] = { (size_t)image_width, (size_t)image_height }; 
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+    clFinish(ocl_stuff.queue);
+    return output_buffer;
+}
+
+void densification(Opencl_buffer left_depth_map, Opencl_buffer consistent_depth_map, cl_kernel kernel, Opencl_stuff ocl_stuff){
+    
+    clSetKernelArg(kernel, 0, sizeof(left_depth_map.buffer), (void*)&left_depth_map.buffer);
+    clSetKernelArg(kernel, 1, sizeof(consistent_depth_map.buffer), (void*)&consistent_depth_map.buffer);
+   
+    size_t global_work_size_image[] = { (size_t)left_depth_map.cols, (size_t)left_depth_map.cols }; 
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        NULL,
+        0,
+        NULL, NULL);
+    clFinish(ocl_stuff.queue);
+}

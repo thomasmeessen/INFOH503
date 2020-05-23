@@ -1,7 +1,7 @@
 
-kernel void cost_volume_in_range(global unsigned char *left_image, global unsigned char *right_image, global float *output_cost, int padding_size, float weight, float t1, float t2){
+kernel void cost_volume_in_range(global unsigned char *left_image, global unsigned char *right_image, global float *output_cost, int padding_size, float weight, float t1, float t2, int disparity_sign){
     // Disparity start at 1 and the id at 0
-    const int disparity = get_global_id(2) +1;
+    const int disparity = get_global_id(2)*disparity_sign;
     // Index for the input image
     // - thread info
     const int in_col = get_global_id(0);
@@ -11,10 +11,15 @@ kernel void cost_volume_in_range(global unsigned char *left_image, global unsign
     // - left
     const int index_left = ( in_col + in_row * in_row_size );
     // - right
-    int index_max_row =  (in_row +1) * in_row_size;
+    const int index_max_row =  (in_row +1) * in_row_size;
+    const int index_min_row =  in_row  * in_row_size -1;
     int candidate_index_right = index_left + disparity;
-    const int index_right = ( candidate_index_right < index_max_row)? candidate_index_right : index_max_row - 1;
-
+    int index_right;
+    if(disparity_sign >0){
+        index_right = ( candidate_index_right < index_max_row)? candidate_index_right : index_max_row - 1;
+    }else{
+        index_right = ( candidate_index_right > index_min_row)? candidate_index_right : index_min_row + 1;
+    }
     // Index for output
     const int out_col = get_global_id(0) + padding_size;
     const int out_row = get_global_id(1) + padding_size;
