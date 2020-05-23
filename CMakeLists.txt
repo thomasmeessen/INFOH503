@@ -8,7 +8,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif ()
 
-project(CL_hello)
+project(CL_INFOH503)
 
 find_package(OpenCL REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -19,7 +19,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 message("${OpenCL_INCLUDE_DIRS}")
 
-add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src/ocl_wrapper.cpp )
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_link_libraries(
     ${PROJECT_NAME}
