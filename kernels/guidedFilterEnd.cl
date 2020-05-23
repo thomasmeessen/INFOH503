@@ -5,7 +5,7 @@ kernel void memset(__global unsigned char* src, __global float* src_a_k, __globa
     const int padded_image_size = (get_global_size(0)+2*padding_size)*(get_global_size(1)+2*padding_size);
 
     int radius = 2;
-    float omega_size = 25;
+    float omega_size = (radius+1)*(radius + 1);
     float a_k_sum = 0;
     float b_k_sum = 0;
     int new_y = y + padding_size;
