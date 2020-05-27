@@ -22,6 +22,8 @@ struct Opencl_buffer {
 
     Opencl_buffer(const std::string & image_path, Opencl_stuff ocl_stuff);
 
+    Opencl_buffer(cl_mem buffer, std::size_t buffer_size, int type, int rows, int cols);
+
     /**
      * Create a float buffer initialized with 0
      * @param rows

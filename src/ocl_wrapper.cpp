@@ -50,6 +50,9 @@ Opencl_buffer::Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff): cols(c
                                 (void*)zero_matrix.data, NULL);
     }
 
+Opencl_buffer::Opencl_buffer(cl_mem buffer, std::size_t buffer_size, int type, int rows, int cols) : buffer(buffer), buffer_size(buffer_size), type(type), rows(rows), cols(cols) {}
+
+
 cl_mem Opencl_buffer::allocate_buffer(Opencl_stuff ocl_stuff, cl_mem_flags flags, size_t size, void * data, cl_int * clInt) {
     return clCreateBuffer(ocl_stuff.context, flags , buffer_size, data, clInt);
 }

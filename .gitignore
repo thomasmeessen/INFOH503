@@ -5,3 +5,4 @@ Makefile
 dependecies/*
 CMakeFiles/
 build/
+.vs/*

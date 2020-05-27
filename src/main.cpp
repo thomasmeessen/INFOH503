@@ -115,7 +115,8 @@ Opencl_buffer compute_depth_map(const string &base_image_path, const string &com
     cost_layer.write_img("Cost_for_layer_normalized_" + indicator + "_.png", ocl_stuff, true);
     
     printf("Cost %s done\n", indicator.c_str());
-    Opencl_buffer filtered_cost = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff, &base_image_path);
+    Opencl_buffer* results = guidedFilter(base_source_image, MAX_DISTANCE, ocl_stuff.context, guidedFilter_kernel, guidedFilterEnd_kernel, ocl_stuff.queue, cost_layer, ocl_stuff);
+    Opencl_buffer filtered_cost = results[2];
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png" , ocl_stuff, true);
     printf("Filtering %s done\n", indicator.c_str());
     
