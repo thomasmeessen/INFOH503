@@ -3,6 +3,8 @@
 #include <CL/cl.h>
 #include <string>
 #include <iostream>
+#include "integral_image.h"
+
 #include <exception>
 
 struct Opencl_stuff {
@@ -67,6 +69,7 @@ private:
                          void *       /* host_ptr */,
                          cl_int *     /* errcode_ret */);
 };
+
 
 
 #endif //CL_INFOH503_OCL_WRAPPER_H
