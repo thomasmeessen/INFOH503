@@ -5,10 +5,11 @@ struct Opencl_buffer;
 struct Opencl_stuff;
 
 struct ScanParameters{
-    /** Blocs number is defined by the number of pixels on the padded image divided by the local work size **/
+    /** Blocs number is defined by half the number of pixels on the padded image divided by the local work size **/
     int number_blocs;
     /** Scan depth is the number of step needed to scan a bloc of thread. it is equal to log2(number of pixels)**/
     int scan_depth;
+    int local_size;
 
     /**
      * Setup parameters using GPU and Image data.

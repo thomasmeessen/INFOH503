@@ -3,7 +3,9 @@
 
 #include <string>
 #include "ocl_wrapper.h"
-
+namespace cv{
+    class Mat;
+}
 
 void print_device_info(cl_device_id);
 void show_build_error(const std::string*, cl_program*, cl_device_id);

@@ -25,7 +25,7 @@ void Opencl_buffer::write_img(string path_to_write, Opencl_stuff ocl_stuff, bool
     }
 
 
-Opencl_buffer::Opencl_buffer(const string &image_path, Opencl_stuff ocl_stuff, int padding_size = 0) {
+Opencl_buffer::Opencl_buffer(const string &image_path, Opencl_stuff ocl_stuff, int padding_size) {
         // - Image Loading
         cv::Mat image = cv::imread(image_path, cv::IMREAD_GRAYSCALE);
         // - Image padding
