@@ -9,7 +9,7 @@ Then each work item load 2 number into global memory.
 
 **/
 
-kernel void scan( __global  uchar2 *indat, __global float2 *answer, __local float *temp) {
+kernel void scan( __global  float2 *indat, __global float2 *answer, __local float *temp, __global float *bloc_sum) {
 
     size_t local_size = get_local_size(0);
     size_t local_group_number = get_num_groups(0);
@@ -20,9 +20,9 @@ kernel void scan( __global  uchar2 *indat, __global float2 *answer, __local floa
 
     // Copy a element to the local memory and converting it to float
 
-    uchar2 in = indat[idx];
-    temp[2*local_id] = (float) in.x;
-    temp[2*local_id +1] = (float) in.y;
+    float2 in = indat[idx];
+    temp[2*local_id] = in.x;
+    temp[2*local_id +1] = in.y;
 
 
     int offset = 1;
@@ -54,6 +54,7 @@ kernel void scan( __global  uchar2 *indat, __global float2 *answer, __local floa
     }
     // The sum of all pixels is stored to be used later
     if(local_id == 0) {
+        bloc_sum[group_id] = temp[local_size * 2- 1];
         temp[local_size * 2- 1] = 0;
     }
 

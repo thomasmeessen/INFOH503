@@ -132,7 +132,7 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
 }
 
 void test_integral_image(const string &image_path, Opencl_stuff ocl_stuff){
-    Opencl_buffer image (image_path, ocl_stuff, 0);
+    Opencl_buffer image (image_path, ocl_stuff, 0, CV_32FC1);
     compute_integral_image(image, ocl_stuff);
     image.free();
 }
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
     // Under dev not connected to the rest of the program
     test_integral_image(left_image_path, ocl_stuff);
 
-    // Disabled for testing
+    // Disabled during integral image testing
     /**
     Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
     Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, MAX_DISTANCE, Movement_direction::R_to_l);

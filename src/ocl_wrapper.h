@@ -46,7 +46,7 @@ struct Opencl_buffer {
 
     Opencl_buffer () = default;
 
-    Opencl_buffer(const std::string &image_path, Opencl_stuff ocl_stuff, int padding_size  = 0);
+    Opencl_buffer(const std::string &image_path, Opencl_stuff ocl_stuff, int padding_size  = 0, int type = CV_8UC1);
 
     /**
      * Create a float buffer initialized with 0

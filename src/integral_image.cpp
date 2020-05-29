@@ -2,6 +2,7 @@
 #include "ocl_wrapper.h"
 #include "tools.h"
 #include <iostream>
+#include <opencv2/core.hpp>
 #include <CL/cl.h>
 #include <math.h>
 
@@ -18,7 +19,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
     int max_pixel_per_bloc = min(max_work_group_size, max_workgroup_dimensions[0]);
 
-    this->number_blocs = (number_pixels ) / max_pixel_per_bloc;
+    this->number_blocs = (number_pixels/2 ) / max_pixel_per_bloc;
     cl_uint max_number_blocs;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_number_blocs), &max_number_blocs, NULL);
 
@@ -33,6 +34,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
 }
 
 void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff) {
+    assert(image.type == CV_32FC1);
     // - Compile source
     cl_int error1, error2;
     cl_program  scan_program;
@@ -48,13 +50,14 @@ void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_
     // - Choose bloc size
     ScanParameters scan_parameter(image, ocl_stuff);
     // -- Reserve buffer for the intermediate result
-    Opencl_buffer intermediate_result(image.rows, image.cols, ocl_stuff);
-    //Opencl_buffer blocs_sums(,1, ocl_stuff);
+    Opencl_buffer intermediate_result(image.rows, image.cols, ocl_stuff, CV_32FC1);
+    Opencl_buffer blocs_sums(1, scan_parameter.number_blocs, ocl_stuff);
 
     // - Apply Scan on the rows of the image
     clSetKernelArg(scan_kernel, 0, sizeof(image.buffer), (void*)&image.buffer);
     clSetKernelArg(scan_kernel, 1, sizeof(intermediate_result.buffer), (void*)&intermediate_result.buffer);
     clSetKernelArg(scan_kernel, 2, scan_parameter.local_size * 2 * sizeof(float), (void*)nullptr);
+    clSetKernelArg(scan_kernel, 3, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) (image.cols * image.rows)/2};
 
@@ -70,6 +73,7 @@ void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_
     clFinish(ocl_stuff.queue);
 
     intermediate_result.write_img("row-integral_image.png", ocl_stuff, true);
+    blocs_sums.write_img("bloc_sums.png", ocl_stuff, true);
     // -- Apply the kernel that compute the integral for a bloc
 
     // -- Apply the kernel that integrate all the blocs
