@@ -146,7 +146,7 @@ int main(int argc, char** argv)
     test_integral_image(left_image_path, ocl_stuff);
 
     // Disabled during integral image testing
-    /**
+
     Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
     Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, MAX_DISTANCE, Movement_direction::R_to_l);
 
@@ -157,6 +157,6 @@ int main(int argc, char** argv)
     densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
     printf("densification/filling done\n");
     left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);
-     **/
+
     return 0;
 }

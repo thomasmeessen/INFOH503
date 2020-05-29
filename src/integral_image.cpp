@@ -26,11 +26,12 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     cl_uint max_number_blocs;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_number_blocs), &max_number_blocs, NULL);
 
-
+    /**
     cout << "Number of pixels: " << number_pixels <<endl;
     cout << "Number of blocs = " << this -> number_blocs <<endl;
     cout << "global size " << this->global_size<<endl;
     cout << "local size " <<  this->local_size <<endl;
+    **/
 }
 
 // static int cpt = 0;
@@ -59,10 +60,10 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     clFinish(ocl_stuff.queue);
     // - Recursive call
     if(scan_parameter.number_blocs >1){
-        cout << "-- Launching last step" << endl;
+        cout << "-- Launching Intermediate step" << endl;
         // The last integral can be computed in one work group
         apply_scan(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration);
-        cout << "-- End last step" << endl;
+        cout << "-- End Intermediate step" << endl;
     }
 
     if(scan_parameter.number_blocs >1){
@@ -108,7 +109,7 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
 
     // - Apply Scan horizontally
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
-    image.write_img("Yipikai.png", ocl_stuff, true);
+    image.write_img("HorizontalIntegralImage.png", ocl_stuff, true);
 
     // - Transpose the intermediate result
 
