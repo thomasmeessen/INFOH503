@@ -9,7 +9,7 @@ Then each work item load 2 number into global memory.
 
 **/
 
-kernel void scan( __global  float2 *indat, __global float2 *answer, __local float *temp, __global float *bloc_sum) {
+kernel void scan( __global  float *indat, __local float *temp, __global float *bloc_sum) {
 
     size_t local_size = get_local_size(0);
     size_t local_group_number = get_num_groups(0);
@@ -20,9 +20,9 @@ kernel void scan( __global  float2 *indat, __global float2 *answer, __local floa
 
     // Copy a element to the local memory and converting it to float
 
-    float2 in = indat[idx];
-    temp[2*local_id] = in.x;
-    temp[2*local_id +1] = in.y;
+
+    temp[2*local_id] = indat[2*idx];
+    temp[2*local_id +1] = indat[2*idx+1];
 
 
     int offset = 1;
@@ -37,6 +37,7 @@ kernel void scan( __global  float2 *indat, __global float2 *answer, __local floa
             // offset will not create out of bound index because idx is capped by a number progressively divided by2
             int ai = offset*(2*local_id+1)-1;
             int bi = offset*(2*local_id+2)-1;
+
             /**
             if(local_id == 0 && group_id ==1){
                                     printf(" offset = %i ", offset);
@@ -54,7 +55,9 @@ kernel void scan( __global  float2 *indat, __global float2 *answer, __local floa
     }
     // The sum of all pixels is stored to be used later
     if(local_id == 0) {
-        bloc_sum[group_id] = temp[local_size * 2- 1];
+        if(group_id < local_group_number -1){
+            bloc_sum[group_id] = temp[local_size * 2- 1];
+        }
         temp[local_size * 2- 1] = 0;
     }
 
@@ -75,10 +78,15 @@ kernel void scan( __global  float2 *indat, __global float2 *answer, __local floa
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    answer[idx] = (float2) {temp[2*local_id], temp[2*local_id]};
+    /**
+    if(group_id == local_group_number -1 && local_id ==0 ) printf("After integration, bloc 0; 0: %f | 1: %f | 2: %f | half: %f\n", temp[0], temp[1], temp[2], temp[local_size /2] );
+    **/
+
+    indat[2*idx] = temp[2*local_id];
+    indat[2*idx+1] = temp[2*local_id +1];
 
 
-      /**
+     /**
     if (group_id == 0){
         if (local_id == 0){
             printf(" -- In Kernel -- \n");

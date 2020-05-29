@@ -14,6 +14,8 @@ void Opencl_buffer::write_img(string path_to_write, Opencl_stuff ocl_stuff, bool
                             0,
                             buffer_size,
                             (void*)image_to_write.data, 0, nullptr, nullptr);
+        //cout << image_to_write.size() <<endl;
+        //cout << image_to_write <<endl;
         if(to_normalize){
             cv::Mat normalized_image;
             cv::normalize(image_to_write, normalized_image, 0, 255, cv::NORM_MINMAX);
@@ -45,7 +47,7 @@ Opencl_buffer::Opencl_buffer(const string &image_path, Opencl_stuff ocl_stuff, i
 
         // - Allocating the buffers
         buffer = allocate_buffer(ocl_stuff,
-                                CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                CL_MEM_COPY_HOST_PTR | CL_MEM_READ_WRITE,
                                 buffer_size,
                                 (void*)image.data, nullptr);
 
