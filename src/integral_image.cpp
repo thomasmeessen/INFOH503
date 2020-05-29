@@ -3,6 +3,7 @@
 #include "tools.h"
 #include <iostream>
 #include <CL/cl.h>
+#include <math.h>
 
 using namespace std;
 const string scan_kernel_path = "scan.cl";
@@ -21,12 +22,14 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     cl_uint max_number_blocs;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_number_blocs), &max_number_blocs, NULL);
 
+    this->scan_depth = log2(max_work_group_size);
 
     cout << "Number of pixels: " << number_pixels <<endl;
     cout << "Maximum number of work item in a work group " << (int) max_work_group_size <<endl;
     cout << "Maximum dimensions of work item in a work group x = " << (int) max_workgroup_dimensions[0] <<endl;
     cout << "Max number of blocs = " << (int) max_number_blocs << endl;
     cout << "Number of blocs = " << this -> number_blocs <<endl;
+    cout << "Computation depth = " << this->scan_depth <<endl;
 }
 
 void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff) {
@@ -52,7 +55,7 @@ void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_
     clSetKernelArg(scan_kernel, 1, sizeof(intermediate_result.buffer), (void*)&intermediate_result.buffer);
     clSetKernelArg(scan_kernel, 2, scan_parameter.local_size * sizeof(float), (void*)nullptr);
     // -- The number of thread is half the number of pixel
-    size_t global_work_size_image[] = {(size_t) (image.cols * image.rows) /2};
+    size_t global_work_size_image[] = {(size_t) (image.cols * image.rows)};
 
     clEnqueueNDRangeKernel(ocl_stuff.queue,
                            scan_kernel,
@@ -64,6 +67,8 @@ void compute_integral_image(const Opencl_buffer &image, const Opencl_stuff &ocl_
                            NULL, NULL);
 
     clFinish(ocl_stuff.queue);
+
+    intermediate_result.write_img("Horizotal-inyegral_image.png", ocl_stuff, true);
     // -- Apply the kernel that compute the integral for a bloc
 
     // -- Apply the kernel that integrate all the blocs

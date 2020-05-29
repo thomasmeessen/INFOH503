@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include "integral_image.h"
+#include <opencv2/core.hpp>
 
 #include <exception>
 
@@ -52,7 +53,7 @@ struct Opencl_buffer {
      * @param rows
      * @param cols
      */
-    Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff);
+    Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff, int type = CV_32FC1);
 
     void free();
 
