@@ -31,19 +31,31 @@ struct Out_of_memory_exception : public std::exception{
     }
 };
 
+namespace cv {
+    class Mat;
+}
+
 struct Opencl_buffer {
     cl_mem buffer;
     std::size_t buffer_size;
-    int cols, rows, type;
+    int cols, rows, type, padding_size;
     /** Device global memory usage in byte **/
     static int used_memory;
+    Opencl_stuff ocl_stuff;
 
-    void write_img(std::string path_to_write, Opencl_stuff ocl_stuff, bool to_normalize);
+    void write_img(std::string path_to_write, bool to_normalize = false);
 
 
     Opencl_buffer () = default;
 
-    Opencl_buffer(const std::string &image_path, Opencl_stuff ocl_stuff, int padding_size);
+    Opencl_buffer(const std::string &image_path, Opencl_stuff ocl_stuff, int padding_size = 0);
+
+    /**
+     * Create a buffer from the given Opencv Matrix do not change the data.
+     * Padding is set to zero by default.
+     * @param ocl_stuff
+     */
+    Opencl_buffer(const cv::Mat&, Opencl_stuff ocl_stuff, int padding_size = 0);
 
     /**
      * Create a float buffer initialized with 0
@@ -51,6 +63,16 @@ struct Opencl_buffer {
      * @param cols
      */
     Opencl_buffer(int rows, int cols, Opencl_stuff ocl_stuff);
+
+    /** This method create a new buffer from the existing with the requested padding.
+     * If the original buffer had already padding it is removed and replace by the new value.
+     * @param padding the requested padding size (with zeros)
+     * @return
+     */
+    Opencl_buffer clone( int padding = 0);
+
+    cv::Mat get_values();
+
 
     void free();
 
@@ -68,5 +90,6 @@ private:
                          cl_int *     /* errcode_ret */);
 };
 
+void test_implementation(Opencl_stuff &ocl_stuff, const std::string &path_to_image);
 
 #endif //CL_INFOH503_OCL_WRAPPER_H

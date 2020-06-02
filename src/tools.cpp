@@ -151,8 +151,8 @@ guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_k
     // - Read Ak and Bk from the first pass
 
 
-    a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, ocl_stuff, true);
-    b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, ocl_stuff, true);
+    a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, true);
+    b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, true);
 
 
     //Seconde pass
