@@ -107,10 +107,41 @@ void compile_source(const string* source_path, cl_program* program, cl_device_id
 
 
 
+Opencl_buffer mean_filter(Opencl_buffer input, cl_kernel kernel, int max_distance, Opencl_stuff ocl_stuff) {
+    // - Buffer for the guiding image (added padding)
+    Opencl_buffer mean_image(input.rows, input.cols, ocl_stuff);
+
+    int width = mean_image.cols - 2 * max_distance; // because the image is padded
+    int height = mean_image.rows - 2 * max_distance;
+
+    clSetKernelArg(kernel, 0, sizeof(input.buffer), (void*)&input.buffer);
+    clSetKernelArg(kernel, 1, sizeof(mean_image.buffer), (void*)&mean_image.buffer);
+    clSetKernelArg(kernel, 2, sizeof(width), &width);
+    clSetKernelArg(kernel, 3, sizeof(height), &height);
+    clSetKernelArg(kernel, 4, sizeof(max_distance), &max_distance);
 
 
-Opencl_buffer
-guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
+    size_t global_work_size_image[] = { (size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
+
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        nullptr,
+        global_work_size_image,
+        nullptr,
+        0,
+        nullptr, nullptr);
+
+    clFinish(ocl_stuff.queue); // syncing
+
+    mean_image.write_img("mean_image.png", ocl_stuff, true);
+
+    return mean_image;
+}
+
+
+
+Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
              struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff) {
 
     // - Buffer for the guiding image (added padding)

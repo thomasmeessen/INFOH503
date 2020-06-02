@@ -23,6 +23,7 @@ const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
 const string densification_source_path = "densification.cl";
+const string mean_filter_path = "mean_filter.cl";
 const string left_image_path = "paper0.png";
 const string right_image_path = "paper1.png";
 //const string left_image_path = "classroom_l.png";
@@ -34,12 +35,14 @@ cl_program guidedFilterEnd_program;
 cl_program disparity_selection_program;
 cl_program left_right_consistency_program;
 cl_program densification_program;
+cl_program mean_filter_program;
 cl_kernel cost_volume_kernel;
 cl_kernel guidedFilter_kernel;
 cl_kernel guidedFilterEnd_kernel;
 cl_kernel disparity_selection_kernel;
 cl_kernel left_right_consistency_kernel;
 cl_kernel densification_kernel;
+cl_kernel mean_filter_kernel;
 Opencl_stuff ocl_stuff;
 
 void set_up(){
@@ -104,6 +107,13 @@ void compile_sources(){
     if(error != CL_SUCCESS)
         printf("error with left right consistency with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
+    //mean_filter
+    compile_source(&mean_filter_path, &mean_filter_program, ocl_stuff.device, ocl_stuff.context);
+    mean_filter_kernel = clCreateKernel(mean_filter_program, "mean_filter", &error);
+    if (error != CL_SUCCESS)
+        printf("error with mean filter with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
+
+
 }
 
 
@@ -143,6 +153,7 @@ int main(int argc, char** argv)
     
     densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
     printf("densification/filling done\n");
+    mean_filter(left_depth_map, mean_filter_kernel, MAX_DISTANCE, ocl_stuff);
     left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);
     return 0;
 }
