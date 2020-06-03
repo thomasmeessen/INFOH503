@@ -38,7 +38,7 @@ kernel void cost_volume_in_range(global unsigned char *start_image, global unsig
     float cost = (float)color_difference / t1 + weight * gradient_difference / t2;
 
 
-    if (in_col == 10 && in_row == 10) {
+    if (in_col == 10 && in_row == 10) {  //need in order to work on windows
         printf("");
     }
 
