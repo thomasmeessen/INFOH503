@@ -20,8 +20,8 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     size_t max_work_group_size;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
     int max_pixel_per_bloc = min(max_work_group_size, max_workgroup_dimensions[0]);
-
-    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1); //why divided by 2.0 ?
+    // Each bloc affect twice it size of pixels
+    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1);
     this->global_size = this->number_blocs * max_workgroup_dimensions[0];
     this->local_size = max_workgroup_dimensions[0] ;
     cl_uint max_number_blocs;
@@ -43,10 +43,12 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     // - Set bloc size
     ScanParameters scan_parameter(array_to_process, ocl_stuff);
     // - Compute integral image of each bloc
-    Opencl_buffer blocs_sums(1, scan_parameter.number_blocs, ocl_stuff,CV_32FC1);
+    int actual_size = array_to_process.rows * array_to_process.cols;
+    Opencl_buffer blocs_sums(1, max(scan_parameter.number_blocs - 1,1), ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
     clSetKernelArg(kernel_bloc, 1, scan_parameter.local_size * 2 * sizeof(float), (void*)nullptr);
     clSetKernelArg(kernel_bloc, 2, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
+    clSetKernelArg(kernel_bloc, 3, sizeof(actual_size), &actual_size);
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) scan_parameter.global_size};
     size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};  //if it's a half then why not divided?
@@ -68,16 +70,16 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
         // The last integral can be computed in one work group
         apply_scan(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration);
         cout << "-- End Intermediate step" << endl;
-    }
 
-    if(scan_parameter.number_blocs >1){
         // - Not the deepest case when the integral image can be computed in one work group
         // - Join each bloc's integral image.
+        actual_size = array_to_process.rows * array_to_process.cols;
         clSetKernelArg(kernel_integration, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
         clSetKernelArg(kernel_integration, 1, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
+        clSetKernelArg(kernel_integration, 2, sizeof(actual_size), &actual_size);
         // -- The number of work item must be a multiple of the local workspace or the kernel do not launch.
         // --- Not sure yet what the influence of dangling work item has in the result
-        size_t global_work_size_image2[] = {(size_t) ceil((int)(array_to_process.cols * array_to_process.rows) / scan_parameter.local_size) * scan_parameter.local_size };
+        size_t global_work_size_image2[] = {(size_t) (ceil((int)(array_to_process.cols * array_to_process.rows) / scan_parameter.local_size) - 1) * scan_parameter.local_size };
         clEnqueueNDRangeKernel(ocl_stuff.queue,
                                kernel_integration,
                                1,

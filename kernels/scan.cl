@@ -8,20 +8,18 @@ Each work item load 2 number into local memory and then perform an addition on t
 Then each work item load 2 number into global memory.
 **/
 
-kernel void scan( __global  float *indat, __local float *temp, __global float *bloc_sum) {
+kernel void scan( __global  float *indat, __local float *temp, __global float *bloc_sum, int limit) {
 
     size_t local_size = get_local_size(0);
     size_t local_group_number = get_num_groups(0);
     size_t idx = get_global_id(0);
-    size_t idy = get_global_id(1);
     size_t local_id = get_local_id(0);
     size_t group_id = get_group_id(0);
+    bool out_of_memory = (idx < limit);
 
     // Copy a element to the local memory and converting it to float
-
-
-    temp[2*local_id] = indat[2*idx];
-    temp[2*local_id +1] = indat[2*idx+1];
+    temp[2*local_id] = (out_of_memory)? indat[2*idx]:0;
+    temp[2*local_id +1] = (out_of_memory)? indat[2*idx+1] : 0;
 
 
     int offset = 1;
@@ -46,6 +44,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
                                     printf(" , %f \n", temp[ai]);
                                     }
                                     **/
+
 
             temp[bi] += temp[ai];
         }
@@ -79,9 +78,10 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     /**
     if(group_id == local_group_number -1 && local_id ==0 ) printf("After integration, bloc 0; 0: %f | 1: %f | 2: %f | half: %f\n", temp[0], temp[1], temp[2], temp[local_size /2] );
     **/
-
-    indat[2*idx] = temp[2*local_id];
-    indat[2*idx+1] = temp[2*local_id +1];
+    if(out_of_memory) {
+        indat[2*idx] = temp[2*local_id];
+        indat[2*idx+1] = temp[2*local_id +1];
+    }
 
 
      /**
