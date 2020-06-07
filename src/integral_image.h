@@ -3,6 +3,7 @@
 
 struct Opencl_buffer;
 struct Opencl_stuff;
+#include <string>
 
 struct ScanParameters{
     /** Blocs number is defined by half the number of pixels on the padded image divided by the local work size **/
@@ -19,6 +20,8 @@ struct ScanParameters{
 };
 
 void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff);
+
+Opencl_buffer transpose(std::string image_path, int max_distance, Opencl_stuff ocl_stuff);
 
 
 #endif //CL_INFOH503_INTEGRAL_IMAGE_H

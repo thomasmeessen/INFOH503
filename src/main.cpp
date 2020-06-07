@@ -24,10 +24,10 @@ const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
 const string densification_source_path = "densification.cl";
-//const string left_image_path = "paper0.png";
-//const string right_image_path = "paper1.png";
-const string left_image_path = "classroom_l.png";
-const string right_image_path = "classroom_r.png";
+const string left_image_path = "paper0.png";
+const string right_image_path = "paper1.png";
+//const string left_image_path = "classroom_l.png";
+//const string right_image_path = "classroom_r.png";
 const string cost_by_layer_source_path = "cost_volume.cl";
 cl_program cost_by_layer_program;
 cl_program guidedFilterStart_program;
@@ -105,6 +105,7 @@ void compile_sources(){
     if(error != CL_SUCCESS)
         printf("error with left right consistency with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
+
 }
 
 
@@ -142,12 +143,16 @@ int main(int argc, char** argv)
     set_up();
     compile_sources();
 
+  /* Opencl_buffer transpose_image =  transpose(left_image_path, MAX_DISTANCE, ocl_stuff);
+   transpose_image.write_img((string)"transpose_image.png", ocl_stuff, false);
+   transpose_image.free();*/
+
     // Under dev not connected to the rest of the program
-    test_integral_image(left_image_path, ocl_stuff);
+     test_integral_image(left_image_path, ocl_stuff);
 
     // Disabled during integral image testing
 
-    Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
+    /*Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
     Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, MAX_DISTANCE, Movement_direction::R_to_l);
 
     Opencl_buffer consistent_depth_map = left_right_consistency(left_depth_map, right_depth_map, left_right_consistency_kernel, ocl_stuff);
@@ -156,7 +161,7 @@ int main(int argc, char** argv)
     
     densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
     printf("densification/filling done\n");
-    left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);
+    left_depth_map.write_img((string)"densification_output.png", ocl_stuff, true);*/
 
     return 0;
 }

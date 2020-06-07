@@ -11,6 +11,7 @@ const string scan_kernel_path = "scan.cl";
 const string scan_integration_kernel_path = "scan_integration.cl";
 const string transpose_kernel_path = "transpose.cl";
 
+
 ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff){
     int number_pixels = image.rows * image.cols;
     size_t max_workgroup_dimensions[3];
@@ -20,7 +21,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
     int max_pixel_per_bloc = min(max_work_group_size, max_workgroup_dimensions[0]);
 
-    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1);
+    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1); //why divided by 2.0 ?
     this->global_size = this->number_blocs * max_workgroup_dimensions[0];
     this->local_size = max_workgroup_dimensions[0] ;
     cl_uint max_number_blocs;
@@ -33,6 +34,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     cout << "local size " <<  this->local_size <<endl;
     **/
 }
+
 
 // static int cpt = 0;
 
@@ -47,7 +49,9 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     clSetKernelArg(kernel_bloc, 2, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) scan_parameter.global_size};
-    size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};
+    size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};  //if it's a half then why not divided?
+    cout << scan_parameter.global_size << endl;
+    cout << scan_parameter.local_size << endl;
     clEnqueueNDRangeKernel(ocl_stuff.queue,
                            kernel_bloc,
                            1,
@@ -92,6 +96,46 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
      **/
 }
 
+Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_stuff) {
+    cl_int error;
+    cl_program  transpose_program;
+    compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
+    cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
+    assert(error == CL_SUCCESS);
+    int block_size = 16;
+    Opencl_buffer image_buffer(image_path, ocl_stuff, max_distance);
+    Opencl_buffer output_buffer(image_buffer.rows, image_buffer.cols, ocl_stuff);
+    Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
+
+    int width = image_buffer.cols; // because the image is padded
+    int height = image_buffer.rows;
+    clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
+    clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
+    clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
+    clSetKernelArg(transpose_kernel, 3, sizeof(height), &height);
+    clSetKernelArg(transpose_kernel, 4, sizeof(block_buffer.buffer), (void*)nullptr);
+
+    size_t global_work_size_image[] = { (size_t)width, (size_t)height };
+    size_t local_work_size_image[] = { (size_t)block_size, (size_t)block_size };
+
+
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        transpose_kernel,
+        2,
+        NULL,
+        global_work_size_image,
+        local_work_size_image,
+        0,
+        NULL, NULL);
+
+    clFinish(ocl_stuff.queue); // syncing
+
+    return output_buffer;
+
+}
+
+
+
 void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff) {
     assert(image.type == CV_32FC1);
     // - Compile source
@@ -105,7 +149,10 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     cl_program transpose_program;
     compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
-    assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
+   // assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
+    assert(error1 == CL_SUCCESS);
+    assert(error2 == CL_SUCCESS);
+    assert(error3 == CL_SUCCESS);
 
     // - Apply Scan horizontally
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);

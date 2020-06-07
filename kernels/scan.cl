@@ -26,7 +26,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
 
 
     int offset = 1;
-    for(int depth = local_size ; depth > 0; depth >>=1)
+    for(int depth = local_size>>1 ; depth > 0; depth >>=1)
     {
         // Divide each time the number of active work item by 2
 
@@ -61,9 +61,8 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
         temp[local_size * 2- 1] = 0;
     }
 
-    for(int d = 1; d < local_size *2 ; d *= 2)
+    for(int d = 1; d < local_size; d *= 2)
     {
-        offset >>= 1;
         barrier(CLK_LOCAL_MEM_FENCE);
         if(local_id < d)
         {
@@ -74,6 +73,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
             temp[ai] = temp[bi];
             temp[bi] += t;
         }
+        offset >>= 1;
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);

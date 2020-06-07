@@ -108,7 +108,6 @@ void compile_source(const string* source_path, cl_program* program, cl_device_id
 
 
 
-
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
              struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff) {
 
