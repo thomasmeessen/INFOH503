@@ -19,7 +19,7 @@ kernel void scan_integration( __global  float *bloc_based_integral_image, __glob
     **/
     // Each pixel receive the cumulative sum of the pixel included in the previous groups.
 
-    //if(!outside_memory) bloc_based_integral_image[shifted_id] +=  bloc_sums[group_id];
-    if(!outside_memory)bloc_based_integral_image[shifted_id] = shifted_id;
+    if(!outside_memory) bloc_based_integral_image[shifted_id] +=  bloc_sums[group_id];
+    //if(!outside_memory)bloc_based_integral_image[shifted_id] = shifted_id;
 
 }
