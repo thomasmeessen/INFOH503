@@ -8,19 +8,20 @@ Each work item load 2 number into local memory and then perform an addition on t
 Then each work item load 2 number into global memory.
 **/
 
-kernel void scan( __global  float *indat, __local float *temp, __global float *bloc_sum, int limit) {
+kernel void scan( __global  float *indat, __local float *temp, __global float *bloc_sum, int limit, int offset_buffer) {
 
     size_t local_size = get_local_size(0);
     size_t local_group_number = get_num_groups(0);
     size_t idx = get_global_id(0);
     size_t local_id = get_local_id(0);
     size_t group_id = get_group_id(0);
-    bool out_of_memory = (idx < limit);
+
+    bool out_of_memory = (idx < limit/2 );
     int n = local_size *2;
 
     // Copy a element to the local memory and converting it to float
-    temp[2*local_id] = (out_of_memory)? indat[2*idx]:0;
-    temp[2*local_id +1] = (out_of_memory)? indat[2*idx+1] : 0;
+    temp[2*local_id] = (out_of_memory)? indat[2*idx + offset_buffer]:0;
+    temp[2*local_id +1] = (out_of_memory)? indat[2*idx+1 + offset_buffer] : 0;
 
 
     int offset = 1;
@@ -37,14 +38,15 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
             int bi = offset*(2*local_id+2)-1;
 
             /**
-            if(local_id == 0 && group_id ==1){
-                                    printf(" offset = %i ", offset);
+            if(idx == 0 ){
+                                    printf(" offset = %i ", offset_buffer);
                                     printf(" bi = %i ", bi);
                                     printf(" , %f ", temp[bi]);
                                     printf(" ai = %i ",  ai);
                                     printf(" , %f \n", temp[ai]);
                                     }
                                     **/
+
 
 
             temp[bi] += temp[ai];
@@ -78,11 +80,17 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
 
 
     if(out_of_memory) {
-        indat[2*idx] = temp[2*local_id];
-        indat[2*idx+1] = temp[2*local_id +1];
+        indat[2*idx + offset_buffer] = temp[2*local_id];
+        indat[2*idx+1 + offset_buffer] = temp[2*local_id +1];
     }
-
-
+    /**
+    if (idx == 0){
+                printf(" -- In Kernel -- \n");
+                printf("local_size = %i \n", (int) local_size);
+                printf("Number of group = %i \n", (int) local_group_number);
+                printf("Offset %i ", offset_buffer);
+                printf("Copied value %i ", (int) temp[2*local_id]);
+            }**/
      /**
     if (group_id == 0){
         if (local_id == 0){

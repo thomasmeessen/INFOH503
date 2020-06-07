@@ -8,14 +8,14 @@ struct Opencl_stuff;
 struct ScanParameters{
     /** Blocs number is defined by half the number of pixels on the padded image divided by the local work size **/
     int number_blocs;
-    int local_size, global_size;
+    int local_size, global_size, offset;
 
     /**
      * Setup parameters using GPU and Image data.
      * @param image Opencv matrix on which the Scan algorithm will be applied
      * @param ocl_stuff
      */
-    ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff);
+    ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff, int row_index);
 
 };
 
