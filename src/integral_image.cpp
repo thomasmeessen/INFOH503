@@ -44,7 +44,7 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     ScanParameters scan_parameter(array_to_process, ocl_stuff);
     // - Compute integral image of each bloc
     int actual_size = array_to_process.rows * array_to_process.cols;
-    Opencl_buffer blocs_sums(1, max(scan_parameter.number_blocs - 1,1), ocl_stuff,CV_32FC1);
+    Opencl_buffer blocs_sums(1, scan_parameter.number_blocs , ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
     clSetKernelArg(kernel_bloc, 1, scan_parameter.local_size * 2 * sizeof(float), (void*)nullptr);
     clSetKernelArg(kernel_bloc, 2, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
@@ -52,8 +52,6 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) scan_parameter.global_size};
     size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};  //if it's a half then why not divided?
-    cout << scan_parameter.global_size << endl;
-    cout << scan_parameter.local_size << endl;
     clEnqueueNDRangeKernel(ocl_stuff.queue,
                            kernel_bloc,
                            1,
@@ -66,10 +64,10 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     clFinish(ocl_stuff.queue);
     // - Recursive call
     if(scan_parameter.number_blocs >1){
-        cout << "-- Launching Intermediate step" << endl;
+        cout << " -- Launching Intermediate step" << endl;
         // The last integral can be computed in one work group
         apply_scan(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration);
-        cout << "-- End Intermediate step" << endl;
+        cout << " -- End Intermediate step" << endl;
 
         // - Not the deepest case when the integral image can be computed in one work group
         // - Join each bloc's integral image.
@@ -78,8 +76,8 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
         clSetKernelArg(kernel_integration, 1, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
         clSetKernelArg(kernel_integration, 2, sizeof(actual_size), &actual_size);
         // -- The number of work item must be a multiple of the local workspace or the kernel do not launch.
-        // --- Not sure yet what the influence of dangling work item has in the result
-        size_t global_work_size_image2[] = {(size_t) (ceil((int)(array_to_process.cols * array_to_process.rows) / scan_parameter.local_size) - 1) * scan_parameter.local_size };
+        // --- There is 2 times more work items than needed for scan
+        size_t global_work_size_image2[] = {(size_t) scan_parameter.global_size *2 };
         clEnqueueNDRangeKernel(ocl_stuff.queue,
                                kernel_integration,
                                1,
@@ -89,6 +87,7 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
                                0,
                                NULL, NULL);
         clFinish(ocl_stuff.queue);
+
     }
     /**
     // use a static int to differentiate between recursive call, hack for debugging
@@ -98,15 +97,14 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
      **/
 }
 
-Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_stuff) {
+
+Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
     cl_int error;
     cl_program  transpose_program;
     compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
     assert(error == CL_SUCCESS);
     int block_size = 8;
-    Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
-    image_buffer.write_img("transpose_ref.jpg", ocl_stuff, false);
 
     Opencl_buffer output_buffer(image_buffer.cols, image_buffer.rows, ocl_stuff,CV_32FC1);
     Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
@@ -114,13 +112,12 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
     int width = image_buffer.cols; // because the image is padded
     int height = image_buffer.rows;
 
-    cout << width << endl;
-    cout << height << endl;
+    cout <<" - Transpose "<< endl;
     clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
     clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
     clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
     clSetKernelArg(transpose_kernel, 3, sizeof(height), &height);
-    clSetKernelArg(transpose_kernel, 4, sizeof(block_buffer.buffer), (void*)nullptr);
+    clSetKernelArg(transpose_kernel, 4, sizeof(float)*block_size * block_size, (void*)nullptr);
 
     size_t global_work_size_image[] = { (size_t)width, (size_t)height };
     size_t local_work_size_image[] = { (size_t)block_size, (size_t)block_size };
@@ -136,9 +133,15 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
         NULL, NULL);
 
     clFinish(ocl_stuff.queue); // syncing
-
+    image_buffer.free();
     return output_buffer;
 
+}
+
+Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_stuff){
+    Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
+    image_buffer.write_img("transpose_ref.jpg", ocl_stuff, false);
+    return transpose(image_buffer, ocl_stuff);
 }
 
 
@@ -162,13 +165,20 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     assert(error3 == CL_SUCCESS);
 
     // - Apply Scan horizontally
+    cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
     image.write_img("HorizontalIntegralImage.png", ocl_stuff, true);
-
     // - Transpose the intermediate result
+    image = transpose(image,ocl_stuff);
 
     // -- Apply Scan on the row of the transposed intermediate result
+    cout <<" - Scan "<< endl;
+    apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
+    image.write_img("VerticalIntegralImage.png", ocl_stuff, true);
 
+    // - Transpose to obtain the integral image
+    image = transpose(image,ocl_stuff);
+    image.write_img("IntegralImage.png", ocl_stuff, true);
 
     // - Compute the window average
 

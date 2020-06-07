@@ -76,9 +76,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    /**
-    if(group_id == local_group_number -1 && local_id ==0 ) printf("After integration, bloc 0; 0: %f | 1: %f | 2: %f | half: %f\n", temp[0], temp[1], temp[2], temp[local_size /2] );
-    **/
+
     if(out_of_memory) {
         indat[2*idx] = temp[2*local_id];
         indat[2*idx+1] = temp[2*local_id +1];
