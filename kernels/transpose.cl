@@ -25,11 +25,5 @@ __kernel void transpose(__global float* input, __global float* output, int width
     yIndex = xGroup * bloc_width + yLocal;
     local_index = xLocal * bloc_width + yLocal;
     size_t index_out = yIndex * height + xIndex;
-
-    if(xLocal == 0 && yLocal == 0){
-        printf(" %f ", block[local_index]);
-    }
     output[index_out] = block[local_index];
-
-
 }
