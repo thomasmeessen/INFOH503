@@ -103,9 +103,10 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
     assert(error == CL_SUCCESS);
     int block_size = 8;
-    Opencl_buffer image_buffer(image_path, ocl_stuff, max_distance);
+    Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
+    image_buffer.write_img("transpose_ref.jpg", ocl_stuff, false);
 
-    Opencl_buffer output_buffer(image_buffer.rows, image_buffer.cols, ocl_stuff);
+    Opencl_buffer output_buffer(image_buffer.cols, image_buffer.rows, ocl_stuff,CV_32FC1);
     Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
 
     int width = image_buffer.cols; // because the image is padded
@@ -126,7 +127,7 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
     clEnqueueNDRangeKernel(ocl_stuff.queue,
         transpose_kernel,
         2,
-        NULL,
+        nullptr,
         global_work_size_image,
         local_work_size_image,
         0,
