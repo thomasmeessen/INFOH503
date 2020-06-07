@@ -161,7 +161,7 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
 
 Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_stuff){
     Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
-    image_buffer.write_img("transpose_ref.jpg", ocl_stuff, false);
+    image_buffer.write_img("transpose_ref.jpg", false);
     return transpose(image_buffer, ocl_stuff);
 }
 
@@ -188,18 +188,18 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     // - Apply Scan horizontally
     cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
-    image.write_img("HorizontalIntegralImage.png", ocl_stuff, true);
+    image.write_img("HorizontalIntegralImage.png", true);
     // - Transpose the intermediate result
     image = transpose(image,ocl_stuff);
 
     // -- Apply Scan on the row of the transposed intermediate result
     cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
-    image.write_img("VerticalIntegralImage.png", ocl_stuff, true);
+    image.write_img("VerticalIntegralImage.png", true);
 
     // - Transpose to obtain the integral image
     image = transpose(image,ocl_stuff);
-    image.write_img("IntegralImage.png", ocl_stuff, true);
+    image.write_img("IntegralImage.png", true);
 
     // - Compute the window average
 

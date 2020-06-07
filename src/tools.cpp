@@ -107,6 +107,36 @@ void compile_source(const string* source_path, cl_program* program, cl_device_id
 
 
 
+Opencl_buffer median_filter(Opencl_buffer input, cl_kernel kernel, int max_distance, Opencl_stuff ocl_stuff) {
+    // - Buffer for the guiding image (added padding)
+    Opencl_buffer median_image(input.rows - 2 * max_distance, input.cols - 2 * max_distance, ocl_stuff);
+
+
+    int width = median_image.cols; // because the image is padded
+    int height = median_image.rows;
+
+    clSetKernelArg(kernel, 0, sizeof(input.buffer), (void*)&input.buffer);
+    clSetKernelArg(kernel, 1, sizeof(median_image.buffer), (void*)&median_image.buffer);
+    clSetKernelArg(kernel, 2, sizeof(max_distance), &max_distance);
+
+
+    size_t global_work_size_image[] = { (size_t)width, (size_t)height}; // don't work on pixels in the padding hence the "- 2*max_distance"
+
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        nullptr,
+        global_work_size_image,
+        nullptr,
+        0,
+        nullptr, nullptr);
+
+    clFinish(ocl_stuff.queue); // syncing
+
+
+    return median_image;
+}
+
 
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
              struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff) {
@@ -149,8 +179,8 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     // - Read Ak and Bk from the first pass
 
 
-    a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, ocl_stuff, true);
-    b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, ocl_stuff, true);
+    a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, true);
+    b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, true);
 
 
     //Seconde pass
