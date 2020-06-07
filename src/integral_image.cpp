@@ -102,13 +102,17 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
     compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
     assert(error == CL_SUCCESS);
-    int block_size = 16;
+    int block_size = 8;
     Opencl_buffer image_buffer(image_path, ocl_stuff, max_distance);
+
     Opencl_buffer output_buffer(image_buffer.rows, image_buffer.cols, ocl_stuff);
     Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
 
     int width = image_buffer.cols; // because the image is padded
     int height = image_buffer.rows;
+
+    cout << width << endl;
+    cout << height << endl;
     clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
     clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
     clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
