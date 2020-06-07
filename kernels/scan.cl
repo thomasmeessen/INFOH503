@@ -16,6 +16,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     size_t local_id = get_local_id(0);
     size_t group_id = get_group_id(0);
     bool out_of_memory = (idx < limit);
+    int n = local_size *2;
 
     // Copy a element to the local memory and converting it to float
     temp[2*local_id] = (out_of_memory)? indat[2*idx]:0;
@@ -23,7 +24,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
 
 
     int offset = 1;
-    for(int depth = local_size ; depth > 0; depth >>=1)
+    for(int depth = n>>1 ; depth > 0; depth >>=1)
     {
         // Divide each time the number of active work item by 2
 
@@ -53,12 +54,12 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     // The sum of all pixels is stored to be used later
     if(local_id == 0) {
         if(group_id < local_group_number -1){
-            bloc_sum[group_id] = temp[local_size * 2- 1];
+            bloc_sum[group_id] = temp[n- 1];
         }
-        temp[local_size * 2- 1] = 0;
+        temp[n - 1] = 0;
     }
 
-    for(int d = 1; d < local_size *2 ; d *= 2)
+    for(int d = 1; d < n ; d *= 2)
     {
         offset >>= 1;
         barrier(CLK_LOCAL_MEM_FENCE);
