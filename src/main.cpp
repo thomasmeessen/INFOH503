@@ -142,10 +142,10 @@ int main(int argc, char** argv)
 {
     set_up();
     compile_sources();
-    test_integral_image(left_image_path, ocl_stuff);
-    Opencl_buffer transpose_image =  transpose(left_image_path, MAX_DISTANCE, ocl_stuff);
-    transpose_image.write_img((string)"transpose_image.png", ocl_stuff, false);
-    transpose_image.free();
+
+   Opencl_buffer transpose_image =  transpose(left_image_path, MAX_DISTANCE, ocl_stuff);
+   transpose_image.write_img((string)"transpose_image.png", ocl_stuff, false);
+   transpose_image.free();
 
     // Under dev not connected to the rest of the program
      //test_integral_image(left_image_path, ocl_stuff);

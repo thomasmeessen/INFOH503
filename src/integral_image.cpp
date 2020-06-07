@@ -12,8 +12,7 @@ const string scan_integration_kernel_path = "scan_integration.cl";
 const string transpose_kernel_path = "transpose.cl";
 
 
-ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff, cl_kernel kernel_bloc){
-
+ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff){
     int number_pixels = image.rows * image.cols;
     size_t max_workgroup_dimensions[3];
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_workgroup_dimensions), &max_workgroup_dimensions, NULL);
@@ -22,7 +21,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
     int max_pixel_per_bloc = min(max_work_group_size, max_workgroup_dimensions[0]);
 
-    this->number_blocs = max((int)ceil(((double)number_pixels) / (double)max_workgroup_dimensions[0]) , 1);
+    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1); //why divided by 2.0 ?
     this->global_size = this->number_blocs * max_workgroup_dimensions[0];
     this->local_size = max_workgroup_dimensions[0] ;
     cl_uint max_number_blocs;
@@ -42,7 +41,7 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
 void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, cl_kernel kernel_bloc, cl_kernel kernel_integration){
     assert(array_to_process.type == CV_32FC1);
     // - Set bloc size
-    ScanParameters scan_parameter(array_to_process, ocl_stuff, kernel_bloc);
+    ScanParameters scan_parameter(array_to_process, ocl_stuff);
     // - Compute integral image of each bloc
     Opencl_buffer blocs_sums(1, scan_parameter.number_blocs, ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
@@ -51,14 +50,14 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) scan_parameter.global_size};
     size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};  //if it's a half then why not divided?
-//    cout << scan_parameter.global_size << endl;
-//    cout << scan_parameter.local_size << endl;
+    cout << scan_parameter.global_size << endl;
+    cout << scan_parameter.local_size << endl;
     clEnqueueNDRangeKernel(ocl_stuff.queue,
                            kernel_bloc,
                            1,
-                           nullptr,
+                           NULL,
                            global_work_size_image,
-                           nullptr,
+                           local_work_size_image,
                            0,
                            NULL, NULL);
 
@@ -69,6 +68,9 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
         // The last integral can be computed in one work group
         apply_scan(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration);
         cout << "-- End Intermediate step" << endl;
+    }
+
+    if(scan_parameter.number_blocs >1){
         // - Not the deepest case when the integral image can be computed in one work group
         // - Join each bloc's integral image.
         clSetKernelArg(kernel_integration, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
@@ -81,7 +83,7 @@ void apply_scan(Opencl_buffer &array_to_process,const Opencl_stuff &ocl_stuff, c
                                1,
                                NULL,
                                global_work_size_image2,
-                               nullptr,
+                               local_work_size_image,
                                0,
                                NULL, NULL);
         clFinish(ocl_stuff.queue);
@@ -100,21 +102,15 @@ Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_st
     compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
     assert(error == CL_SUCCESS);
-
+    int block_size = 8;
     Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
     image_buffer.write_img("transpose_ref.jpg", ocl_stuff, false);
-    int width = image_buffer.cols; // because the image is padded
-    int height = image_buffer.rows;
-
-    size_t max_workgroup_dimensions[3];
-    clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_workgroup_dimensions), &max_workgroup_dimensions, NULL);
-    int block_size = sqrt(max_workgroup_dimensions[0]);
-    while(width % block_size !=0 && height % block_size == 0) block_size/=2;
 
     Opencl_buffer output_buffer(image_buffer.cols, image_buffer.rows, ocl_stuff,CV_32FC1);
-    Opencl_buffer block_buffer(block_size, block_size, ocl_stuff, CV_32FC1);
+    Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
 
-
+    int width = image_buffer.cols; // because the image is padded
+    int height = image_buffer.rows;
 
     cout << width << endl;
     cout << height << endl;
