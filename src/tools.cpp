@@ -16,6 +16,12 @@ void print_device_info(cl_device_id device){
     clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(info), info, NULL);
     printf("Device name = %s\n", info);
 
+    clGetDeviceInfo(device,CL_DEVICE_VERSION, sizeof(info), info,NULL);
+    printf("OpenCL version = %s\n", info); 
+
+    clGetDeviceInfo(device,CL_DRIVER_VERSION, sizeof(info), info,NULL);
+    printf("Driver version = %s\n", info); 
+    
     clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_ulong), &buf_ulong, NULL);
     printf("Global memory size :%llu B\n", (unsigned long long)buf_ulong);
 
