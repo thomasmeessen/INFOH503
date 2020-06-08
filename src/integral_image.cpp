@@ -46,9 +46,9 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
     // - Compute integral image of each bloc
     int actual_size = scan_parameter.pixels_per_row;
     int number_bloc_per_row = scan_parameter.number_of_bloc_per_row;
-    cout << actual_size << " vs " << number_bloc_per_row << endl;
+    cout << actual_size << "  " << number_bloc_per_row << endl;
 //    cout << scan_parameter.global_size <<endl;
-    Opencl_buffer blocs_sums(1, scan_parameter.number_blocs , ocl_stuff,CV_32FC1);
+    Opencl_buffer blocs_sums(array_to_process.rows, scan_parameter.number_of_bloc_per_row , ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
     clSetKernelArg(kernel_bloc, 1, scan_parameter.local_size * 2 * sizeof(float), (void*)nullptr);
     clSetKernelArg(kernel_bloc, 2, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
@@ -79,7 +79,9 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
         clSetKernelArg(kernel_integration, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
         clSetKernelArg(kernel_integration, 1, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
         clSetKernelArg(kernel_integration, 2, sizeof(actual_size), &actual_size);
-        clSetKernelArg(kernel_integration, 3, sizeof(scan_parameter.offset), &scan_parameter.offset);
+        // --- Multiplied by two because there is 2 times more threads.
+        number_bloc_per_row *= 2;
+        clSetKernelArg(kernel_integration, 3, sizeof(number_bloc_per_row), &number_bloc_per_row);
         // -- The number of work item must be a multiple of the local workspace or the kernel do not launch.
         // --- There is 2 times more work items than needed for scan
         size_t global_work_size_image2[] = {(size_t) scan_parameter.global_size *2 };

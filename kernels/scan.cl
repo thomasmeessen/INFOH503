@@ -16,15 +16,15 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     size_t local_id = get_local_id(0);
     size_t group_id = get_group_id(0);
 
-    int row_number = floor((float)group_id / (float)num_bloc_per_row);
+    int row_number = group_id / num_bloc_per_row;
     int row_id = idx - row_number *  local_size * num_bloc_per_row;
     int memory_offset = row_number * pixel_per_row ;
-    bool out_of_memory = (2*row_id+1 + memory_offset < (row_number +1) * pixel_per_row );
+    bool in_memory = (2*row_id+1 + memory_offset < (row_number +1) * pixel_per_row );
     int n = local_size *2;
 
     // Copy a element to the local memory and converting it to float
-    temp[2*local_id] = (out_of_memory)? indat[2*row_id + memory_offset]:0;
-    temp[2*local_id +1] = (out_of_memory)? indat[2*row_id+1 + memory_offset] : 0;
+    temp[2*local_id] = (in_memory)? indat[2*row_id + memory_offset]:0;
+    temp[2*local_id +1] = (in_memory)? indat[2*row_id+1 + memory_offset] : 0;
 
 
     int offset = 1;
@@ -82,7 +82,7 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     barrier(CLK_LOCAL_MEM_FENCE);
 
 
-    if(out_of_memory) {
+    if(in_memory) {
         indat[2*row_id + memory_offset] = temp[2*local_id];
         indat[2*row_id+1 + memory_offset] = temp[2*local_id +1];
     }
