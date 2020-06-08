@@ -13,19 +13,19 @@ const string scan_integration_kernel_path = "scan_integration.cl";
 const string transpose_kernel_path = "transpose.cl";
 
 
-ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff, int row_index){
-    int number_pixels = image.cols;
+ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &ocl_stuff){
+    int number_rows = image.rows;
+    this->pixels_per_row = image.cols;
     size_t max_workgroup_dimensions[3];
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_workgroup_dimensions), &max_workgroup_dimensions, NULL);
-
     size_t max_work_group_size;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
     int max_pixel_per_bloc = min(max_work_group_size, max_workgroup_dimensions[0]);
     // Each bloc affect twice it size of pixels
-    this->number_blocs = max((int)ceil(((double)number_pixels/2.0) / (double)max_pixel_per_bloc) , 1);
+    this->number_of_bloc_per_row = max((int)ceil(((double)pixels_per_row/2.0) / (double)max_pixel_per_bloc), 1);
+    this->number_blocs = number_of_bloc_per_row * number_rows;
     this->global_size = this->number_blocs * max_workgroup_dimensions[0];
     this->local_size = max_workgroup_dimensions[0] ;
-    this->offset = row_index * number_pixels;
     cl_uint max_number_blocs;
     clGetDeviceInfo(ocl_stuff.device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_number_blocs), &max_number_blocs, NULL);
 
@@ -39,20 +39,21 @@ ScanParameters::ScanParameters(const Opencl_buffer &image, const Opencl_stuff &o
 
 
 void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_stuff, cl_kernel kernel_bloc,
-                cl_kernel kernel_integration, int row_index) {
+                cl_kernel kernel_integration) {
     assert(array_to_process.type == CV_32FC1);
     // - Set bloc size
-    ScanParameters scan_parameter(array_to_process, ocl_stuff, row_index);
+    ScanParameters scan_parameter(array_to_process, ocl_stuff);
     // - Compute integral image of each bloc
-    int actual_size = array_to_process.cols;
-    int offset = scan_parameter.offset;
+    int actual_size = scan_parameter.pixels_per_row;
+    int number_bloc_per_row = scan_parameter.number_of_bloc_per_row;
+    cout << actual_size << " vs " << number_bloc_per_row << endl;
 //    cout << scan_parameter.global_size <<endl;
     Opencl_buffer blocs_sums(1, scan_parameter.number_blocs , ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
     clSetKernelArg(kernel_bloc, 1, scan_parameter.local_size * 2 * sizeof(float), (void*)nullptr);
     clSetKernelArg(kernel_bloc, 2, sizeof(blocs_sums.buffer), (void*) &blocs_sums.buffer);
     clSetKernelArg(kernel_bloc, 3, sizeof(actual_size), &actual_size);
-    clSetKernelArg(kernel_bloc, 4, sizeof(offset), &offset);
+    clSetKernelArg(kernel_bloc, 4, sizeof(number_bloc_per_row), &number_bloc_per_row);
     // -- The number of thread is half the number of pixel
     size_t global_work_size_image[] = {(size_t) scan_parameter.global_size};
     size_t local_work_size_image[] = {(size_t) scan_parameter.local_size};  //if it's a half then why not divided?
@@ -67,10 +68,10 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
 
     clFinish(ocl_stuff.queue);
     // - Recursive call
-    if(scan_parameter.number_blocs >1) {
+    if(scan_parameter.number_of_bloc_per_row > 1) {
         //cout << " -- Launching Intermediate step" << endl;
         // The last integral can be computed in one work group
-        apply_scan_on_row(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration, 0);
+        apply_scan_on_row(blocs_sums, ocl_stuff, kernel_bloc, kernel_integration);
         //cout << " -- End Intermediate step" << endl;
 
         // - Not the deepest case when the integral image can be computed in one work group
@@ -105,13 +106,14 @@ void apply_scan(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_stuff, 
                 cl_kernel kernel_integration){
 
     int row_number = array_to_process.rows;
-    auto thread_array = new thread[row_number];
-    for(int i = 0; i < row_number; i++){
-//        thread th (apply_scan_on_row,ref(array_to_process), ref(ocl_stuff), kernel_bloc, kernel_integration, i);
-//        th.join();
-        thread_array[i] = thread(apply_scan_on_row,ref(array_to_process), ref(ocl_stuff), kernel_bloc, kernel_integration, i);
-        thread_array[i].join();
-    }
+    //auto thread_array = new thread[row_number];
+    apply_scan_on_row(array_to_process, ocl_stuff, kernel_bloc, kernel_integration);
+//    for(int i = 0; i < row_number; i++){
+////        thread th (apply_scan_on_row,ref(array_to_process), ref(ocl_stuff), kernel_bloc, kernel_integration, i);
+////        th.join();
+//        thread_array[i] = thread(apply_scan_on_row,ref(array_to_process), ref(ocl_stuff), kernel_bloc, kernel_integration, i);
+//        thread_array[i].join();
+//    }
     // Curieusement le multithreading ne fonctionne pas qui aurait cru?
 //    for(int i = 0; i < row_number; i++) {
 //        thread_array[i].join();
