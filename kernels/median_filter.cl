@@ -3,13 +3,15 @@ kernel void median_filter(__global float* src, __global float* dst_mean, int pad
     const int y = get_global_id(1);
     const int padded_image_size = (get_global_size(0) + 2 * padding_size) * (get_global_size(1) + 2 * padding_size);
     const int original_width = get_global_size(0);
+
+
+    int radius = 2;
     int omega[25];
     int count = 0;
     int i, j, position, swap;
-    int median = 13;
+    int median = (radius+1)/2;
 
-    int radius = 2;
-    float omega_size = (radius*2 + 1) * (radius * 2 + 1);
+    int omega_size = (radius*2 + 1) * (radius * 2 + 1);
     int new_y = y + padding_size;
     int new_x = x + padding_size;
     int central_pixel = new_x + new_y * (original_width + 2 * padding_size);

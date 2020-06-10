@@ -24,10 +24,10 @@ const string guidedFilterEnd_source_path = "guidedFilterEnd.cl";
 const string disparity_selection_source_path = "disparity_selection.cl";
 const string left_right_consistency_source_path = "left_right_consistency.cl";
 const string densification_source_path = "densification.cl";
-//const string left_image_path = "paper0.png";
-//const string right_image_path = "paper1.png";
-const string left_image_path = "classroom_l.png";
-const string right_image_path = "classroom_r.png";
+const string left_image_path = "paper0.png";
+const string right_image_path = "paper1.png";
+//const string left_image_path = "classroom_l.png";
+//const string right_image_path = "classroom_r.png";
 const string median_filter_path = "median_filter.cl";
 const string cost_by_layer_source_path = "cost_volume.cl";
 cl_program cost_by_layer_program;
@@ -46,10 +46,104 @@ cl_kernel densification_kernel;
 cl_kernel median_filter_kernel;
 Opencl_stuff ocl_stuff;
 
+
+
+
+
+
+
+
+void printDevices() {
+
+    int i, j;
+    char* value;
+    size_t valueSize;
+    cl_uint platformCount;
+    cl_platform_id* platforms;
+    cl_uint deviceCount;
+    cl_device_id* devices;
+    cl_uint maxComputeUnits;
+
+    // get all platforms
+    clGetPlatformIDs(0, NULL, &platformCount);
+    platforms = (cl_platform_id*)malloc(sizeof(cl_platform_id) * platformCount);
+    clGetPlatformIDs(platformCount, platforms, NULL);
+
+    for (i = 0; i < platformCount; i++) {
+
+        // get all devices
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &deviceCount);
+        devices = (cl_device_id*)malloc(sizeof(cl_device_id) * deviceCount);
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, deviceCount, devices, NULL);
+
+        // for each device print critical attributes
+        for (j = 0; j < deviceCount; j++) {
+
+            // print device name
+            clGetDeviceInfo(devices[j], CL_DEVICE_NAME, 0, NULL, &valueSize);
+            value = (char*)malloc(valueSize);
+            clGetDeviceInfo(devices[j], CL_DEVICE_NAME, valueSize, value, NULL);
+            printf("%d. Device: %s\n", j + 1, value);
+            free(value);
+
+            // print hardware device version
+            clGetDeviceInfo(devices[j], CL_DEVICE_VERSION, 0, NULL, &valueSize);
+            value = (char*)malloc(valueSize);
+            clGetDeviceInfo(devices[j], CL_DEVICE_VERSION, valueSize, value, NULL);
+            printf(" %d.%d Hardware version: %s\n", j + 1, 1, value);
+            free(value);
+
+            // print software driver version
+            clGetDeviceInfo(devices[j], CL_DRIVER_VERSION, 0, NULL, &valueSize);
+            value = (char*)malloc(valueSize);
+            clGetDeviceInfo(devices[j], CL_DRIVER_VERSION, valueSize, value, NULL);
+            printf(" %d.%d Software version: %s\n", j + 1, 2, value);
+            free(value);
+
+            // print c version supported by compiler for device
+            clGetDeviceInfo(devices[j], CL_DEVICE_OPENCL_C_VERSION, 0, NULL, &valueSize);
+            value = (char*)malloc(valueSize);
+            clGetDeviceInfo(devices[j], CL_DEVICE_OPENCL_C_VERSION, valueSize, value, NULL);
+            printf(" %d.%d OpenCL C version: %s\n", j + 1, 3, value);
+            free(value);
+
+            // print parallel compute units
+            clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS,
+                sizeof(maxComputeUnits), &maxComputeUnits, NULL);
+            printf(" %d.%d Parallel compute units: %d\n", j + 1, 4, maxComputeUnits);
+
+        }
+
+        free(devices);
+
+    }
+
+    free(platforms);
+
+
+}
+
+
 void set_up(){
     // 1. Get a platform.
-    cl_platform_id platform;
-    clGetPlatformIDs(1, &platform, nullptr);
+   // cl_platform_id platform;
+   // clGetPlatformIDs(1, &platform, nullptr);
+
+    int i, j;
+    char* value;
+    size_t valueSize;
+    cl_uint platformCount;
+    cl_platform_id* platforms;
+    cl_uint deviceCount;
+    cl_device_id* devices;
+    cl_uint maxComputeUnits;
+
+    clGetPlatformIDs(0, NULL, &platformCount);
+    platforms = (cl_platform_id*)malloc(sizeof(cl_platform_id) * platformCount);
+    clGetPlatformIDs(platformCount, platforms, NULL);
+
+
+    cl_platform_id platform = platforms[0];
 
     // 2. Find a gpu device.
     cl_device_id device;
@@ -127,7 +221,7 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
     
     printf("Cost %s done\n", indicator.c_str());
     Opencl_buffer filtered_cost = guidedFilter(start_image_path, disparity_range, guidedFilter_kernel,
-                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff);
+                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff, 9);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png", true);
     printf("Filtering %s done\n", indicator.c_str());
     cost_volume.free();
@@ -149,11 +243,11 @@ void test_integral_image(const string &image_path, Opencl_stuff ocl_stuff){
 int main(int argc, char** argv)
 {
 
-
+   // printDevices();
     set_up();
     compile_sources();
 
-    test_integral_image(left_image_path, ocl_stuff);
+   // test_integral_image(left_image_path, ocl_stuff);
 
     // Under dev not connected to the rest of the program
      //test_integral_image(left_image_path, ocl_stuff);

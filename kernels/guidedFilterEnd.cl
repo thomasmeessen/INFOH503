@@ -1,11 +1,10 @@
-kernel void memset(__global unsigned char* src, __global float* src_a_k, __global float* src_b_k, __global float* dst, int original_width, int original_height, int padding_size) {
+kernel void memset(__global unsigned char* src, __global float* src_a_k, __global float* src_b_k, __global float* dst, int original_width, int original_height, int padding_size, int radius) {
     const int x = get_global_id(0);
     const int y = get_global_id(1);
     const int z = get_global_id(2);
     const int padded_image_size = (get_global_size(0)+2*padding_size)*(get_global_size(1)+2*padding_size);
 
-    int radius = 2;
-    float omega_size = (radius+1)*(radius + 1);
+    float omega_size = (2 * radius + 1) * (2 * radius + 1);
     float a_k_sum = 0;
     float b_k_sum = 0;
     int new_y = y + padding_size;

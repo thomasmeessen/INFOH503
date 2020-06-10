@@ -145,7 +145,7 @@ Opencl_buffer median_filter(Opencl_buffer input, cl_kernel kernel, int max_dista
 
 
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
-             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff) {
+             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, int radius = 9) {
 
     // - Buffer for the guiding image (added padding)
     Opencl_buffer guiding_image_buffer (guiding_image_path, ocl_stuff, max_distance);
@@ -168,6 +168,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel, 4, sizeof(width), &width);
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
+    clSetKernelArg(kernel, 7, sizeof(radius), &radius);
 
     size_t global_work_size_image[] = {(size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
 
@@ -199,6 +200,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel0, 4, sizeof(width), &width);
     clSetKernelArg(kernel0, 5, sizeof(height), &height);
     clSetKernelArg(kernel0, 6, sizeof(max_distance), &max_distance);
+    clSetKernelArg(kernel0, 7, sizeof(radius), &radius);
 
 
     clEnqueueNDRangeKernel(ocl_stuff.queue,
@@ -333,7 +335,7 @@ Opencl_buffer cost_range_layer(const string &start_image_path, const string &end
 }
 
 
-Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, cl_kernel kernel, Opencl_stuff ocl_stuff, const string* image_path = NULL){
+Opencl_buffer cost_selection(Opencl_buffer filtered_cost, int disparity_range, cl_kernel kernel, Opencl_stuff ocl_stuff){
     const int image_width = filtered_cost.cols;
     const int image_height = filtered_cost.rows / disparity_range; // cause disparity layers
 
