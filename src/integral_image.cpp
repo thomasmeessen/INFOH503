@@ -46,7 +46,7 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
     // - Compute integral image of each bloc
     int actual_size = scan_parameter.pixels_per_row;
     int number_bloc_per_row = scan_parameter.number_of_bloc_per_row;
-    cout << actual_size << "  " << number_bloc_per_row << endl;
+   // cout << actual_size << "  " << number_bloc_per_row << endl;
 //    cout << scan_parameter.global_size <<endl;
     Opencl_buffer blocs_sums(array_to_process.rows, scan_parameter.number_of_bloc_per_row , ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
@@ -137,7 +137,7 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
     int width = image_buffer.cols; // because the image is padded
     int height = image_buffer.rows;
 
-    cout <<" - Transpose "<< endl;
+    //cout <<" - Transpose "<< endl;
     clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
     clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
     clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
@@ -189,14 +189,14 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     assert(error3 == CL_SUCCESS);
 
     // - Apply Scan horizontally
-    cout <<" - Scan "<< endl;
+   // cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
     image.write_img("HorizontalIntegralImage.png", true);
     // - Transpose the intermediate result
     image = transpose(image,ocl_stuff);
 
     // -- Apply Scan on the row of the transposed intermediate result
-    cout <<" - Scan "<< endl;
+    //cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
     image.write_img("VerticalIntegralImage.png", true);
 

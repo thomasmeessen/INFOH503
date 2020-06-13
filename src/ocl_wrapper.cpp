@@ -14,7 +14,6 @@ cv::Mat Opencl_buffer::get_values1(int size, int _rows, cv::Mat* matrix) {
     rows = _rows;
     cv::Mat final_matrix;
     for (int i = 0; i < 16; i++) {
-        //cv::Mat a = cv::Mat::zeros(0, 0, type);
         cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
         clEnqueueReadBuffer(ocl_stuff.queue,
             buffer,
@@ -32,12 +31,6 @@ cv::Mat Opencl_buffer::get_values1(int size, int _rows, cv::Mat* matrix) {
 
 
 }
-
-
-
-
-
-
 
 
 cv::Mat Opencl_buffer::get_values() {

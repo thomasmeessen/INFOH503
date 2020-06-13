@@ -13,7 +13,7 @@ void compile_source(const std::string*, cl_program*, cl_device_id, cl_context);
 void image_padding(cv::Mat&, cv::Mat&, int);
 Opencl_buffer
 guidedFilter(std::string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
-             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, int radius);
+             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, cl_kernel padding_kernel,int radius);
 void image_difference(cv::Mat&, cv::Mat&, cv::Mat&, int, cl_context, cl_kernel, cl_command_queue, bool);
 enum Movement_direction {L_to_r, R_to_l};
 Opencl_buffer cost_range_layer(cv::Mat, cv::Mat, int, cl_device_id, cl_context, cl_command_queue);

@@ -30,6 +30,7 @@ const string right_image_path = "paper1.png";
 //const string right_image_path = "classroom_r.png";
 const string median_filter_path = "median_filter.cl";
 const string cost_by_layer_source_path = "cost_volume.cl";
+const string padding_source_path = "padding.cl";
 cl_program cost_by_layer_program;
 cl_program guidedFilterStart_program;
 cl_program guidedFilterEnd_program;
@@ -37,6 +38,7 @@ cl_program disparity_selection_program;
 cl_program left_right_consistency_program;
 cl_program densification_program;
 cl_program median_filter_program;
+cl_program padding_program;
 cl_kernel cost_volume_kernel;
 cl_kernel guidedFilter_kernel;
 cl_kernel guidedFilterEnd_kernel;
@@ -44,6 +46,7 @@ cl_kernel disparity_selection_kernel;
 cl_kernel left_right_consistency_kernel;
 cl_kernel densification_kernel;
 cl_kernel median_filter_kernel;
+cl_kernel padding_kernel;
 Opencl_stuff ocl_stuff;
 
 
@@ -116,6 +119,12 @@ void compile_sources(){
     if (error != CL_SUCCESS)
         printf("error with median filter with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
+    //padding
+    compile_source(&padding_source_path, &padding_program, ocl_stuff.device, ocl_stuff.context);
+    padding_kernel = clCreateKernel(padding_program, "padding", &error);
+    if (error != CL_SUCCESS)
+        printf("error with padding with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
+
 }
 
 
@@ -130,7 +139,7 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
     
     printf("Cost %s done\n", indicator.c_str());
     Opencl_buffer filtered_cost = guidedFilter(start_image_path, disparity_range, guidedFilter_kernel,
-                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff, 9);
+                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff, padding_kernel, 2);
     filtered_cost.write_img("filtered_cost_" + indicator + "_.png", true);
     printf("Filtering %s done\n", indicator.c_str());
     cost_volume.free();
