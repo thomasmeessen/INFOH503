@@ -1,4 +1,4 @@
- #ifndef CL_INFOH503_INTEGRAL_IMAGE_H
+#ifndef CL_INFOH503_INTEGRAL_IMAGE_H
 #define CL_INFOH503_INTEGRAL_IMAGE_H
 
 struct Opencl_buffer;
@@ -21,7 +21,7 @@ struct ScanParameters{
 
 void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff);
 
-Opencl_buffer transpose(std::string image_path, int max_distance, Opencl_stuff ocl_stuff);
+Opencl_buffer transpose(std::string image_path, Opencl_stuff ocl_stuff);
 
 
 #endif //CL_INFOH503_INTEGRAL_IMAGE_H

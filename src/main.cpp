@@ -151,7 +151,7 @@ int main(int argc, char** argv)
     set_up();
     compile_sources();
 
-    run_integral_image_benchmark();
+    run_integral_image_benchmark(ocl_stuff);
     /**
 
     test_integral_image(left_image_path, ocl_stuff);

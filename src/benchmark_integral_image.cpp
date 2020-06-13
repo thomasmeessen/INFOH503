@@ -1,11 +1,13 @@
 #include "benchmark_integral_image.hpp"
+#include "integral_image.h"
+#include "ocl_wrapper.h"
 #include "iostream"
 #include <fstream>
 #include <chrono>
 
 using namespace std;
 
-void run_integral_image_benchmark(){
+void run_integral_image_benchmark(Opencl_stuff ocl_stuff) {
     cout << "Running Benchmark for integral image." <<endl;
     cv::Mat results = cv::Mat::zeros(3, MAX_FACTOR, CV_32FC1);
     for (int i = 1; i < MAX_FACTOR; i++){
@@ -19,11 +21,14 @@ void run_integral_image_benchmark(){
         auto end_cpu = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds_cpu = end_cpu - start_cpu;
 
+        // - Load to gpu
+        Opencl_buffer gpu_loaded_image_to_integrate(image_to_integrate, ocl_stuff, 0);
         // - GPU process
         auto start_gpu = std::chrono::steady_clock::now();
-
+        compute_integral_image(gpu_loaded_image_to_integrate, ocl_stuff);
         auto end_gpu = std::chrono::steady_clock::now();
-
+        gpu_loaded_image_to_integrate.free();
+        assert(Opencl_buffer::used_memory == 0);
         // - Storing results
         std::chrono::duration<double> elapsed_seconds_gpu = end_gpu - start_gpu;
         auto cpu_time = elapsed_seconds_cpu.count();

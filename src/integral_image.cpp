@@ -46,7 +46,6 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
     // - Compute integral image of each bloc
     int actual_size = scan_parameter.pixels_per_row;
     int number_bloc_per_row = scan_parameter.number_of_bloc_per_row;
-    cout << actual_size << "  " << number_bloc_per_row << endl;
 //    cout << scan_parameter.global_size <<endl;
     Opencl_buffer blocs_sums(array_to_process.rows, scan_parameter.number_of_bloc_per_row , ocl_stuff,CV_32FC1);
     clSetKernelArg(kernel_bloc, 0, sizeof(array_to_process.buffer), (void*)&array_to_process.buffer);
@@ -96,12 +95,7 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
         clFinish(ocl_stuff.queue);
 
     }
-    /**
-    // use a static int to differentiate between recursive call, hack for debugging
-    cout << "cpt " << cpt << " " << array_to_process.rows << " "<< array_to_process.cols << " " <<array_to_process.buffer_size <<endl;
-    array_to_process.write_img(to_string(cpt) + "Yipikai.png", ocl_stuff, true);
-    cpt ++;
-     **/
+    blocs_sums.free();
 }
 
 void apply_scan(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_stuff, cl_kernel kernel_bloc,
@@ -132,12 +126,11 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
     int block_size = 8;
 
     Opencl_buffer output_buffer(image_buffer.cols, image_buffer.rows, ocl_stuff,CV_32FC1);
-    Opencl_buffer block_buffer(block_size, block_size, ocl_stuff);
 
     int width = image_buffer.cols; // because the image is padded
     int height = image_buffer.rows;
 
-    cout <<" - Transpose "<< endl;
+//    cout <<" - Transpose "<< endl;
     clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
     clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
     clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
@@ -163,9 +156,9 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
 
 }
 
-Opencl_buffer transpose(string image_path, int max_distance, Opencl_stuff ocl_stuff){
+Opencl_buffer transpose(string image_path, Opencl_stuff ocl_stuff) {
     Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
-    image_buffer.write_img("transpose_ref.jpg", false);
+//    image_buffer.write_img("transpose_ref.jpg", false);
     return transpose(image_buffer, ocl_stuff);
 }
 
@@ -190,20 +183,20 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     assert(error3 == CL_SUCCESS);
 
     // - Apply Scan horizontally
-    cout <<" - Scan "<< endl;
+//    cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
-    image.write_img("HorizontalIntegralImage.png", true);
+//    image.write_img("HorizontalIntegralImage.png", true);
     // - Transpose the intermediate result
     image = transpose(image,ocl_stuff);
 
     // -- Apply Scan on the row of the transposed intermediate result
-    cout <<" - Scan "<< endl;
+//    cout <<" - Scan "<< endl;
     apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
-    image.write_img("VerticalIntegralImage.png", true);
+//    image.write_img("VerticalIntegralImage.png", true);
 
     // - Transpose to obtain the integral image
     image = transpose(image,ocl_stuff);
-    image.write_img("IntegralImage.png", true);
+//    image.write_img("IntegralImage.png", true);
 
     // - Compute the window average
 
