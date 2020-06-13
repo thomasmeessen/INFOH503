@@ -184,7 +184,6 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
     cl_program transpose_program;
     compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
     cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
-   // assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
     assert(error1 == CL_SUCCESS);
     assert(error2 == CL_SUCCESS);
     assert(error3 == CL_SUCCESS);
@@ -203,7 +202,7 @@ void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff)
 
     // - Transpose to obtain the integral image
     image = transpose(image,ocl_stuff);
-    image.write_img("IntegralImage.png", true);
+   // image.write_img("IntegralImage.png", true);
 
     // - Compute the window average
 

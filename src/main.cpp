@@ -120,6 +120,7 @@ void compile_sources(){
 
 
 Opencl_buffer compute_depth_map(const string &start_image_path, const string &end_image_path, int disparity_range, Movement_direction dir ){
+
     string indicator = Movement_direction::L_to_r == dir ? "L" : "R";
     int disparity_sign = Movement_direction::L_to_r == dir ? -1 : 1;
 

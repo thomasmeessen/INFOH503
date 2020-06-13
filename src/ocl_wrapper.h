@@ -41,7 +41,7 @@ namespace cv {
 struct Opencl_buffer {
     cl_mem buffer;
     std::size_t buffer_size;
-    int cols, rows, type, padding_size;
+    int cols, rows, type, padding_size = 0;
     /** Device global memory usage in byte **/
     static int used_memory;
     Opencl_stuff ocl_stuff;
@@ -58,7 +58,7 @@ struct Opencl_buffer {
      * Padding is set to zero by default.
      * @param ocl_stuff
      */
-    Opencl_buffer(const cv::Mat&, Opencl_stuff ocl_stuff, int padding_size = 0);
+    Opencl_buffer( cv::Mat&, Opencl_stuff ocl_stuff, int padding_size = 0, int _type = CV_8UC1, int dupa = 0);
 
     /**
      * Create a float buffer initialized with 0
@@ -72,9 +72,10 @@ struct Opencl_buffer {
      * @param padding the requested padding size (with zeros)
      * @return
      */
-    Opencl_buffer clone( int padding = 0);
+    Opencl_buffer clone( int padding = 0, int _type = 0);
 
     cv::Mat get_values();
+    cv::Mat get_values1(int size,int _rows, cv::Mat* matrix);
 
 
     void free();

@@ -143,18 +143,54 @@ Opencl_buffer median_filter(Opencl_buffer input, cl_kernel kernel, int max_dista
     return median_image;
 }
 
+Opencl_buffer integral_image_cost(Opencl_buffer costBuffer, Opencl_stuff ocl_stuff) {
+   // cv::Mat image_to_write = cv::Mat::zeros(costBuffer.rows, costBuffer.cols, CV_32FC1);
+    cv::Mat matrix[16];
+    costBuffer.get_values1((costBuffer.buffer_size / 16), costBuffer.rows / 16, matrix);
+    Opencl_buffer first = Opencl_buffer(matrix[0], ocl_stuff, 0, CV_32FC1);
+    compute_integral_image(first, ocl_stuff);
+    cv::Mat final_matrix = first.get_values();
+   for (int i = 1; i < 16; i++) {
+       // cv::Mat image1 = costBuffer.get_values1((costBuffer.buffer_size / 16) * 1, (costBuffer.buffer_size / 16), costBuffer.rows / 16, image_to_write);
+        Opencl_buffer test = Opencl_buffer(matrix[i], ocl_stuff, 0, CV_32FC1);
+        compute_integral_image(test, ocl_stuff);
+
+        cv::vconcat(final_matrix, test.get_values(), final_matrix);
+    }
+    Opencl_buffer test1 = Opencl_buffer(final_matrix, ocl_stuff, 0, CV_32FC1);
+     test1.write_img("concat.png", true);
+
+
+   // costBuffer.write_img("costAfter.png", true);
+    return test1;
+
+
+
+
+}
+
 
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
              struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, int radius = 9) {
 
+
+    Opencl_buffer guiding_image_buffer(guiding_image_path, ocl_stuff, max_distance);
+    Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
+    //integral_image.type = CV_32FC1;
+    compute_integral_image(integral_image, ocl_stuff);
+    Opencl_buffer integral_image_padded = integral_image.clone(max_distance);
+    costBuffer.write_img("IntegralImage_padded_guided.png", true);
+    Opencl_buffer costBufferIntegral= integral_image_cost(costBuffer, ocl_stuff);
+    //Opencl_buffer integral_image_cost = costBuffer.clone(0);
+    
     // - Buffer for the guiding image (added padding)
-    Opencl_buffer guiding_image_buffer (guiding_image_path, ocl_stuff, max_distance);
 
     //costBuffer.write_img(guiding_image_path + "cost_thingy.png", ocl_stuff, true);
 
 
     int width = guiding_image_buffer.cols - 2 * max_distance; // because the image is padded
     int height = guiding_image_buffer.rows - 2 * max_distance;
+
 
     // - Buffer to keep Ak an Bk - no initialisation
     Opencl_buffer b_k_buffer(guiding_image_buffer.rows * max_distance, guiding_image_buffer.cols, ocl_stuff);
@@ -169,6 +205,8 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
     clSetKernelArg(kernel, 7, sizeof(radius), &radius);
+    clSetKernelArg(kernel, 8, sizeof(integral_image.buffer), &integral_image);
+    clSetKernelArg(kernel, 9, sizeof(costBufferIntegral.buffer), &costBufferIntegral);
 
     size_t global_work_size_image[] = {(size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
 
@@ -217,6 +255,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     // - Freeing memory
     a_k_buffer.free();
     b_k_buffer.free();
+    integral_image.free();
     guiding_image_buffer.free();
 
     return  output_filter_buffer;
@@ -303,6 +342,7 @@ Opencl_buffer cost_range_layer(const string &start_image_path, const string &end
 
     // Allcoating a buffer with 0
     Opencl_buffer cost_output_buffer ((start_image.rows + 2 * padding_size) * disparity_range, start_image.cols + 2 * padding_size, ocl_stuff);
+
 
     // - Passing arguments to the kernel
     clSetKernelArg(cost_volume_kernel, 0, sizeof(start_image.buffer), (void*)&start_image.buffer);

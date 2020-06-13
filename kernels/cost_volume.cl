@@ -26,6 +26,7 @@ kernel void cost_volume_in_range(global unsigned char *start_image, global unsig
     const int output_disparity_offset = out_row_size* out_col_size * disparity;
     const int output_index = out_col +  out_row * out_row_size + output_disparity_offset ;
 
+
     int color_difference =  abs(start_image[index_start] - end_image[index_end]);
     color_difference = (color_difference < t1) ? color_difference : (int)t1;
 
@@ -47,7 +48,7 @@ kernel void cost_volume_in_range(global unsigned char *start_image, global unsig
 
     //padding
 
-    if(in_col==0){//first column, every pixel on the left has the same color
+    /*if(in_col==0){//first column, every pixel on the left has the same color
         for(int i=1; i <= padding_size; i++){
             output_cost[output_index - i] = cost;
         }
@@ -66,6 +67,6 @@ kernel void cost_volume_in_range(global unsigned char *start_image, global unsig
         for(int i=1; i <= padding_size; i++){
             output_cost[output_index + i*out_row_size] = cost;
         }
-    }
+    }*/
 
 }

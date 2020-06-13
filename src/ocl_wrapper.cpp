@@ -7,16 +7,52 @@ using namespace std;
 int Opencl_buffer::used_memory =0;
 
 
-cv::Mat Opencl_buffer::get_values(){
+
+
+
+cv::Mat Opencl_buffer::get_values1(int size, int _rows, cv::Mat* matrix) {
+    rows = _rows;
+    cv::Mat final_matrix;
+    for (int i = 0; i < 16; i++) {
+        //cv::Mat a = cv::Mat::zeros(0, 0, type);
+        cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
+        clEnqueueReadBuffer(ocl_stuff.queue,
+            buffer,
+            CL_TRUE,
+            size*i,
+            size,
+            (void*)image_to_write.data, 0, nullptr, nullptr);
+        matrix[i] = image_to_write;
+    }
+
+
+    clFinish(ocl_stuff.queue);
+
+    return final_matrix;
+
+
+}
+
+
+
+
+
+
+
+
+cv::Mat Opencl_buffer::get_values() {
     cv::Mat image_to_write = cv::Mat::zeros(rows, cols, type);
     assert(image_to_write.total() * image_to_write.elemSize() == buffer_size);
     clEnqueueReadBuffer(ocl_stuff.queue,
-                        buffer,
-                        CL_TRUE,
-                        0,
-                        buffer_size,
-                        (void*)image_to_write.data, 0, nullptr, nullptr);
+            buffer,
+            CL_TRUE,
+            0,
+            buffer_size,
+            (void*)image_to_write.data, 0, nullptr, nullptr);
+
+
     clFinish(ocl_stuff.queue);
+
     return image_to_write;
 }
 
@@ -32,11 +68,16 @@ void Opencl_buffer::write_img(std::string path_to_write, bool to_normalize) {
         }
     }
 
-Opencl_buffer Opencl_buffer::clone( int new_padding_size){
+Opencl_buffer Opencl_buffer::clone( int new_padding_size, int _type){
     // - Reading Image From device
     cv::Mat image = get_values();
     // - Image padding
     int old_ps = padding_size;
+
+    int type = image.type();
+    if (_type != 0) {
+        type = _type;
+    }
 
     if( new_padding_size != 0 || old_ps != 0){
         // Area that does not include existing padding;
@@ -44,13 +85,13 @@ Opencl_buffer Opencl_buffer::clone( int new_padding_size){
         // A area to copy the data(with any existing padding removed)
         cv::Rect extract_zone (new_padding_size, new_padding_size, data_to_copy_area.width, data_to_copy_area.height);
         // The new matrix with space for padding
-        cv::Mat image_padded = cv::Mat::zeros(data_to_copy_area.height + 2 * new_padding_size, data_to_copy_area.width + 2 * new_padding_size, image.type());
+        cv::Mat image_padded = cv::Mat::zeros(data_to_copy_area.height + 2 * new_padding_size, data_to_copy_area.width + 2 * new_padding_size, type);
         image(data_to_copy_area).copyTo(image_padded(extract_zone));
         image = image_padded;
 
     }
     // - Allocating new buffer
-   Opencl_buffer new_buffer(image, ocl_stuff, new_padding_size);
+   Opencl_buffer new_buffer(image, ocl_stuff, new_padding_size, type);
     return new_buffer;
 }
 
@@ -106,11 +147,25 @@ void Opencl_buffer::free() {
     clReleaseMemObject(buffer);
 }
 
-Opencl_buffer::Opencl_buffer(const cv::Mat& data, Opencl_stuff ocl_stuff, int padding_size):  type(data.type()),
+Opencl_buffer::Opencl_buffer(cv::Mat& data, Opencl_stuff ocl_stuff, int padding_size, int _type, int dupa):  type(data.type()),
                                                                             buffer_size(data.total() * data.elemSize()),
                                                                             cols(data.cols), rows(data.rows),
                                                                             ocl_stuff(ocl_stuff),
                                                                             padding_size(padding_size){
+
+    if (dupa != 0) {
+        cout << "data type " << _type << " " << data.type() << endl;
+    }
+
+    if (_type != data.type()) {
+        cv::Mat zero_matrix = cv::Mat::zeros(data.rows, data.cols, _type);
+        type = _type;
+        data.convertTo(zero_matrix, _type);
+        buffer_size = zero_matrix.total() * zero_matrix.elemSize();
+        data = zero_matrix;
+    }
+
+
 
     buffer = allocate_buffer(ocl_stuff,CL_MEM_COPY_HOST_PTR ,
                     buffer_size,
