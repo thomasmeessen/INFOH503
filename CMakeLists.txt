@@ -21,6 +21,7 @@ message("${OpenCL_INCLUDE_DIRS}")
 
 add_executable(${PROJECT_NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/ocl_wrapper.cpp
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark_integral_image.cpp
                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/integral_image.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCL_INCLUDE_DIRS})
 target_link_libraries(

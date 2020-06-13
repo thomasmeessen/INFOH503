@@ -1,10 +1,8 @@
 
 #include <CL/cl.h>
-#include <iostream>
-#include <vector>
-#include <fstream>
+
 #include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
+#include "benchmark_integral_image.hpp"
 #include "tools.cpp"
 #include "ocl_wrapper.h"
 #include "integral_image.h"
@@ -153,6 +151,9 @@ int main(int argc, char** argv)
     set_up();
     compile_sources();
 
+    run_integral_image_benchmark();
+    /**
+
     test_integral_image(left_image_path, ocl_stuff);
 
     // Under dev not connected to the rest of the program
@@ -180,6 +181,8 @@ int main(int argc, char** argv)
     left_depth_map.write_img((string) "densification_output.png", true);
     median_image.free();
     left_depth_map.free();
+
+     **/
 
     return 0;
 
