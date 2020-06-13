@@ -175,17 +175,20 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
 
 
     Opencl_buffer guiding_image_buffer(guiding_image_path, ocl_stuff, max_distance);
-    Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
+    //Opencl_buffer integral_image(guiding_image_path, ocl_stuff, max_distance, CV_32FC1);
+     Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
     //integral_image.type = CV_32FC1;
     compute_integral_image(integral_image, ocl_stuff);
-    Opencl_buffer integral_image_padded = integral_image.clone(max_distance);
-    costBuffer.write_img("IntegralImage_padded_guided.png", true);
+    Opencl_buffer integral_image_padded = integral_image.clone(max_distance, CV_32FC1);
+    integral_image_padded.write_img("GUIDED_INTEGRAL_IMAGE.png", true);
+    //costBuffer.write_img("IntegralImage_padded_guided.png", true);
     Opencl_buffer costBufferIntegral= integral_image_cost(costBuffer, ocl_stuff);
     //Opencl_buffer integral_image_cost = costBuffer.clone(0);
     
     // - Buffer for the guiding image (added padding)
 
     //costBuffer.write_img(guiding_image_path + "cost_thingy.png", ocl_stuff, true);
+    guiding_image_buffer.write_img("Guided_image_test.png", true);
 
 
     int width = guiding_image_buffer.cols - 2 * max_distance; // because the image is padded
@@ -205,7 +208,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
     clSetKernelArg(kernel, 7, sizeof(radius), &radius);
-    clSetKernelArg(kernel, 8, sizeof(integral_image.buffer), &integral_image);
+    clSetKernelArg(kernel, 8, sizeof(integral_image_padded.buffer), &integral_image_padded);
     clSetKernelArg(kernel, 9, sizeof(costBufferIntegral.buffer), &costBufferIntegral);
 
     size_t global_work_size_image[] = {(size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"

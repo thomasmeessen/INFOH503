@@ -158,7 +158,7 @@ Opencl_buffer::Opencl_buffer(cv::Mat& data, Opencl_stuff ocl_stuff, int padding_
     }
 
     if (_type != data.type()) {
-        cv::Mat zero_matrix = cv::Mat::zeros(data.rows, data.cols, _type);
+        cv::Mat zero_matrix;
         type = _type;
         data.convertTo(zero_matrix, _type);
         buffer_size = zero_matrix.total() * zero_matrix.elemSize();

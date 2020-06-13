@@ -14,13 +14,25 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     int new_x = x + padding_size;
     int central_pixel = new_x + new_y * (original_width + 2 * padding_size) + z*padded_image_size;
 
+    //bottom right
     int p1 = ((new_y + radius) * (original_width + 2 * padding_size)) + (new_x + radius);   // jx, jy
+    //bottom left
     int p2 = ((new_y + radius) * (original_width + 2 * padding_size)) + (new_x - radius - 1);  //ix-1, jy
+    //top right
     int p3 = ((new_y - radius - 1) * (original_width + 2 * padding_size)) + (new_x + radius);  //jx, iy-1
+    //top left
     int p4 = ((new_y - radius - 1) * (original_width + 2 * padding_size)) + (new_x - radius - 1); //ix-1, iy-1
 
     float integral_image_sum = integral_image[p1] - integral_image[p2] - integral_image[p3] + integral_image[p4];
-    float integral_image_cost_sum = integral_image_cost[p1] - integral_image_cost[p2] - integral_image_cost[p3] + integral_image_cost[p4];
+
+    if (x == 100 && y == 100 && z == 0) {
+        printf("bottom right  %f %i\n", integral_image[p1], p1);
+        printf("bottom left  %f %i\n", integral_image[p2], p2);
+        printf("top right  %f %i\n", integral_image[p3], p3);
+        printf("top left  %f %i\n", integral_image[p4], p4);
+    }
+
+   // float integral_image_cost_sum = integral_image_cost[p1] - integral_image_cost[p2] - integral_image_cost[p3] + integral_image_cost[p4];
        
 
     for (int i = -radius; i <= radius; i++) {
@@ -37,13 +49,13 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
         }
     }
 
-    float mu_k = src_image_pixels_sum / omega_size;
-    //float mu_k = integral_image_sum / omega_size;
-    if (x == 2 && y == 0 && z == 0) {
-        printf("p_k_sum  %f \n", p_k_sum);
-        printf("integral  %f \n", integral_image_cost_sum);
+    float mu_k1 = src_image_pixels_sum / omega_size;
+    float mu_k = integral_image_sum / omega_size;
+    if (x == 100 && y == 100 && z == 0) {
+        printf("p_k_sum  %f \n", mu_k);
+        printf("integral  %f \n", mu_k1);
     }
-    p_k_sum = integral_image_cost_sum;
+    //p_k_sum = integral_image_cost_sum;
 
     float sigma_k_square = (src_image_pixels_sum_square / omega_size) - (mu_k * mu_k);
     float p_k = p_k_sum / omega_size;
