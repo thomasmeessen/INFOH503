@@ -7,6 +7,20 @@
 
 using namespace std;
 
+void cpu_integral_image(cv::Mat m){
+    // Limitation due to the usage of the .at operator in the loop
+    assert(m.type() == CV_32FC1);
+    cv::Mat ii = cv::Mat::zeros(m.size(), m.type());
+    for( int row = 1; row < m.rows ; row++){
+        float s =0;
+        for (int col = 0; col < m.cols - 1 ; col ++){
+            s += m.at<float>(row-1, col);
+            ii.at<float>(row, col+1) = s + ii.at<float>(row-1, col+1);
+        }
+    }
+}
+
+
 void run_integral_image_benchmark(Opencl_stuff ocl_stuff) {
     cout << "Running Benchmark for integral image." <<endl;
     cv::Mat results = cv::Mat::zeros(3, MAX_FACTOR, CV_32FC1);
@@ -17,7 +31,7 @@ void run_integral_image_benchmark(Opencl_stuff ocl_stuff) {
 
         // - CPU process
         auto start_cpu = std::chrono::steady_clock::now();
-
+        cpu_integral_image(image_to_integrate);
         auto end_cpu = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds_cpu = end_cpu - start_cpu;
 
