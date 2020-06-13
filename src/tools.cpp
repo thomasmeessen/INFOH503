@@ -174,6 +174,8 @@ Opencl_buffer padding_calc(Opencl_buffer input, cl_kernel kernel, int max_distan
 
     clFinish(ocl_stuff.queue); // syncing
 
+    image_padded.write_img("TESTESTEST.png", true);
+
 
 
     return image_padded;
@@ -197,6 +199,7 @@ Opencl_buffer integral_image_cost(Opencl_buffer costBuffer, cl_kernel padding_ke
         Opencl_buffer integral_image_padded = padding_calc(test, padding_kernel, max_distance, ocl_stuff);
 
         cv::vconcat(final_matrix, integral_image_padded.get_values(), final_matrix);
+       // cv::vconcat(final_matrix, first.get_values(), final_matrix);
     }
     Opencl_buffer test1 = Opencl_buffer(final_matrix, ocl_stuff, 0, CV_32FC1);
      test1.write_img("concat.png", true);
@@ -217,8 +220,8 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     integral_image_padded.write_img("paddedThisTHIs.png", true);
 
     Opencl_buffer costBufferIntegral= integral_image_cost(costBuffer, padding_kernel, max_distance, ocl_stuff);
-
-    guiding_image_buffer.write_img("Guided_image_test.png", true);
+    //Opencl_buffer costBufferIntegral;
+   // guiding_image_buffer.write_img("Guided_image_test.png", true);
 
 
     int width = guiding_image_buffer.cols - 2 * max_distance; // because the image is padded

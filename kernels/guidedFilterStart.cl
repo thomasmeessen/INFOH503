@@ -65,7 +65,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
         }
     }
 
-    //float mu_k = src_image_pixels_sum / omega_size;
+  //  float mu_k = src_image_pixels_sum / omega_size;
     float mu_k = integral_image_sum / omega_size;
 
    /* if (x >= 383 && y>= 284 && (mu_k1 - mu_k) < 1) {

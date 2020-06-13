@@ -8,9 +8,19 @@
 
     if (x == 0) {
             for (int j = 0; j < height; j++) {
-                for (int i = 0; i <= padding; i++) {
-                    src[(x + (padding +j) * width) + i] = src[(x + (padding + j) * width) + padding+1];
+                for (int i = 0; i < padding; i++) {
+                    src[(x + (padding +j) * width) + i] = src[(x + (padding + j) * width) + padding];
                     src[(x + (padding+j) * width + width - 1) - i] = src[x + (padding + j) * width + width - padding-1];
+                }
+            }
+            for (int i = 0; i < padding; i++) {
+                for (int j = 0; j < padding; j++) {
+                    src[i + j * width] = src[padding + padding * width];  //left upper edge
+                    src[(width-1) + j*(width) - i] = src[(width - 1) + padding * (width)-padding]; //right upper edge
+                  //  printf(" thisthis %f \n", src[padding + original_width + (padded_height - 1 - padding) * width]);
+                    src[(i + j * width) + (height + padding) * width] = src[(x + padding) + (padded_height - 1 - padding) * width]; //left bottom edge
+                   // src[(width + j * width - i) + (height+padding)*width] = src[padding+ original_width + (padded_height - 1 - padding) * width]; //right bottom edge
+                    src[(width-1 + j * width - i) + (height+padding)*width] = src[padding + original_width + (padded_height - 1 - padding) * width]; //right bottom edge
                 }
             }
     }
