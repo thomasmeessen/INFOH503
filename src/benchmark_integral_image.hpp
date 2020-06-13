@@ -5,7 +5,7 @@
 #include "ocl_wrapper.h"
 
 #define BASE_SIZE  1000
-#define MAX_FACTOR  15
+#define MAX_FACTOR  16
 
 void cpu_integral_image(cv::Mat);
 

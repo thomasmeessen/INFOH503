@@ -100,8 +100,6 @@ void apply_scan_on_row(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_
 
 void apply_scan(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_stuff, cl_kernel kernel_bloc,
                 cl_kernel kernel_integration){
-
-    int row_number = array_to_process.rows;
     //auto thread_array = new thread[row_number];
     apply_scan_on_row(array_to_process, ocl_stuff, kernel_bloc, kernel_integration);
 //    for(int i = 0; i < row_number; i++){
@@ -117,12 +115,7 @@ void apply_scan(Opencl_buffer &array_to_process, const Opencl_stuff &ocl_stuff, 
 
 }
 
-Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
-    cl_int error;
-    cl_program  transpose_program;
-    compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
-    cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error);
-    assert(error == CL_SUCCESS);
+Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff, cl_kernel kernel) {
     int block_size = 8;
 
     Opencl_buffer output_buffer(image_buffer.cols, image_buffer.rows, ocl_stuff,CV_32FC1);
@@ -131,18 +124,18 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
     int height = image_buffer.rows;
 
 //    cout <<" - Transpose "<< endl;
-    clSetKernelArg(transpose_kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
-    clSetKernelArg(transpose_kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
-    clSetKernelArg(transpose_kernel, 2, sizeof(width), &width);
-    clSetKernelArg(transpose_kernel, 3, sizeof(height), &height);
-    clSetKernelArg(transpose_kernel, 4, sizeof(float)*block_size * block_size, (void*)nullptr);
+    clSetKernelArg(kernel, 0, sizeof(image_buffer.buffer), (void*)&image_buffer.buffer);
+    clSetKernelArg(kernel, 1, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
+    clSetKernelArg(kernel, 2, sizeof(width), &width);
+    clSetKernelArg(kernel, 3, sizeof(height), &height);
+    clSetKernelArg(kernel, 4, sizeof(float)*block_size * block_size, (void*)nullptr);
 
     size_t global_work_size_image[] = { (size_t)width, (size_t)height };
     size_t local_work_size_image[] = { (size_t)block_size, (size_t)block_size };
 
 
     clEnqueueNDRangeKernel(ocl_stuff.queue,
-        transpose_kernel,
+        kernel,
         2,
         nullptr,
         global_work_size_image,
@@ -156,46 +149,53 @@ Opencl_buffer transpose(Opencl_buffer image_buffer, Opencl_stuff ocl_stuff) {
 
 }
 
-Opencl_buffer transpose(string image_path, Opencl_stuff ocl_stuff) {
-    Opencl_buffer image_buffer(image_path, ocl_stuff, 0, CV_32FC1);
-//    image_buffer.write_img("transpose_ref.jpg", false);
-    return transpose(image_buffer, ocl_stuff);
-}
+struct KernelPack{
+    static cl_kernel scan_kernel, scan_integration_kernel, transpose_kernel;
+    bool init = false;
+    KernelPack()=default;
+    KernelPack(Opencl_stuff ocl_stuff){
+        cl_int error1, error2, error3;
+        cl_program  scan_program;
+        compile_source(&scan_kernel_path, &scan_program, ocl_stuff.device, ocl_stuff.context);
+        cl_kernel scan_kernel = clCreateKernel(scan_program, "scan", &error1);
+        cl_program  scan_integration_program;
+        compile_source(&scan_integration_kernel_path, &scan_integration_program, ocl_stuff.device, ocl_stuff.context);
+        cl_kernel scan_integration_kernel = clCreateKernel(scan_integration_program, "scan_integration", &error3);
+        cl_program transpose_program;
+        compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
+        cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
+        // assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
+        assert(error1 == CL_SUCCESS);
+        assert(error2 == CL_SUCCESS);
+        assert(error3 == CL_SUCCESS);
+        init =true;
+    }
+};
 
-
+static KernelPack kernel_pack = KernelPack();
+cl_kernel KernelPack::scan_integration_kernel = cl_kernel();
+cl_kernel KernelPack::scan_kernel = cl_kernel();
+cl_kernel KernelPack::transpose_kernel = cl_kernel();
 
 void compute_integral_image(Opencl_buffer &image, const Opencl_stuff &ocl_stuff) {
     assert(image.type == CV_32FC1);
     // - Compile source
-    cl_int error1, error2, error3;
-    cl_program  scan_program;
-    compile_source(&scan_kernel_path, &scan_program, ocl_stuff.device, ocl_stuff.context);
-    cl_kernel scan_kernel = clCreateKernel(scan_program, "scan", &error1);
-    cl_program  scan_integration_program;
-    compile_source(&scan_integration_kernel_path, &scan_integration_program, ocl_stuff.device, ocl_stuff.context);
-    cl_kernel scan_integration_kernel = clCreateKernel(scan_integration_program, "scan_integration", &error3);
-    cl_program transpose_program;
-    compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
-    cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
-   // assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
-    assert(error1 == CL_SUCCESS);
-    assert(error2 == CL_SUCCESS);
-    assert(error3 == CL_SUCCESS);
+    if(!kernel_pack.init) kernel_pack = KernelPack(ocl_stuff);
 
     // - Apply Scan horizontally
 //    cout <<" - Scan "<< endl;
-    apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
+    apply_scan(image, ocl_stuff, kernel_pack.scan_kernel, kernel_pack.scan_integration_kernel);
 //    image.write_img("HorizontalIntegralImage.png", true);
     // - Transpose the intermediate result
-    image = transpose(image,ocl_stuff);
+    image = transpose(image,ocl_stuff, kernel_pack.transpose_kernel);
 
     // -- Apply Scan on the row of the transposed intermediate result
 //    cout <<" - Scan "<< endl;
-    apply_scan(image, ocl_stuff, scan_kernel, scan_integration_kernel);
+    apply_scan(image, ocl_stuff, kernel_pack.scan_kernel, kernel_pack.scan_integration_kernel);
 //    image.write_img("VerticalIntegralImage.png", true);
 
     // - Transpose to obtain the integral image
-    image = transpose(image,ocl_stuff);
+    image = transpose(image,ocl_stuff, kernel_pack.transpose_kernel);
 //    image.write_img("IntegralImage.png", true);
 
     // - Compute the window average

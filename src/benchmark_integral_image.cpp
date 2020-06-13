@@ -24,6 +24,12 @@ void cpu_integral_image(cv::Mat m){
 void run_integral_image_benchmark(Opencl_stuff ocl_stuff) {
     cout << "Running Benchmark for integral image." <<endl;
     cv::Mat results = cv::Mat::zeros(3, MAX_FACTOR, CV_32FC1);
+
+    //- Init gpu
+    Opencl_buffer temp(results, ocl_stuff, 0);
+    compute_integral_image(temp, ocl_stuff);
+    temp.free();
+
     for (int i = 1; i < MAX_FACTOR; i++){
         // - Setup
         int mat_size = i * BASE_SIZE;
