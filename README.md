@@ -68,6 +68,7 @@ And Obviously we have different expectation regarding the different speed up we 
 
 
 ### 1.3 actual speed up
+(Without the integral image in guided filter)
 
 |   |  Run 1 | Run 2| Run 3| Average |
 |---|---|--- |--- |---|
@@ -75,6 +76,15 @@ And Obviously we have different expectation regarding the different speed up we 
 | RL depth map generation |  0.115929 s | 0.109131 s| 0.0984433 s| 0.1078344 s|
 | occlusion detection|  0.0004026 s| 0.0005632 s| 0.0002664 s| 0.0004107 s|
 | occlusion filling| 0.0016828 s| 0.0018479 s| 0.0021746 s| 0.0019017 s|
+
+(With the integral image in guided filter)
+
+|   |  Run 1 |
+|---|---|---|
+| LR depth map generation  |   0.101171 s |
+| RL depth map generation |  0.115929 s |
+| occlusion detection|  0.0004026 s|
+| occlusion filling| 0.0016828 s|
 
 First of all we direcly notice that our runs are far less consistent than the paper implementation.
 
