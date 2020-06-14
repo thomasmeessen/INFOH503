@@ -68,16 +68,31 @@ quick notes about what we could do to make it run faster : use local memories, s
 
 ## 2. Integral Image
 
+Computing the integral image of a matrix is a essential step of the process studied.
+It has many reference documents;
 
+- [Nvidia guide to Scan](https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda)
+- [IEE symposium extract: Efficient Integral Image Computation](https://www.researchgate.net/publication/224167113_Efficient_Integral_Image_Computation_on_the_GPU)
 
+Our implementation follow the second document and explore the case of having the number of blocs per row exceeding the size of a bloc.
+In this situation the algorithm must be called recursively.
 
-The resulting algorithm have widely different performance when compared to CPU between platforms.
+Our current implementation do not run as is on all of our platform with some difficulties identified to trust the bloc size given by the opencl intterface.
+Additionally at the of the work the introduction of ocl-grinder there has been some bad memory access identified.
+But tools usage was not generalized to all platforms to difficulty of installation leading to no further development of this issue.
+
+Between platforms The resulting algorithm have widely different performance when compared to CPU as shown by the 3 following graphs.
 The GPU performance are relatively the same with a performance for a 11k x 11k matrix above 3sec.
 
+**Platform 1**
 
 ![](img/config1.png)
 
+**Platform 2**
+
 ![](img/config2.png)
+
+**Platform 3**
 
 ![](img/config3.png)
 
