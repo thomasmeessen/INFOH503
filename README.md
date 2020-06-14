@@ -77,11 +77,30 @@ It has many reference documents;
 Our implementation follow the second document and explore the case of having the number of blocs per row exceeding the size of a bloc.
 In this situation the algorithm must be called recursively.
 
-Our current implementation do not run as is on all of our platform with some difficulties identified to trust the bloc size given by the opencl intterface.
-Additionally at the of the work the introduction of ocl-grinder there has been some bad memory access identified.
+### Algorithm in short.
+
+The algorithm is composed of 3 kernels;
+
+- Bloc Scan (S)
+- Transpose
+- Inter-Block synchronisation.(IB)
+
+Because S & IB are both row-based process the kernels are enqueued so that a finite number of block is mapped to each row.
+The choice was made to avoid padding meaning that each global memory access are conditioned to a check on the thread index.
+
+Scan is the most complex kernel, it use a local buffer to perform a dyadic sum and store the bloc sum into a separate global memory for further operations.
+Each kernel perform 2 float reading&writing operation in the global memory becaused it proved difficult to transfer opencv matrix to device memory encoded in float2 using the version of the libraries that worked on all our platforms.
+It is expected to have bank conflict that may be avoided by further work on the kernel.
+
+
+### State of the work
+
+Our current implementation do not run as is on all of our platform with some difficulties identified to trust the bloc size given by the opencl interface.
+Additionally at the of the work the introduction of ocl-grinder there has been some bad memory access identified on the scan kernel.
 But tools usage was not generalized to all platforms to difficulty of installation leading to no further development of this issue.
 
-Between platforms The resulting algorithm have widely different performance when compared to CPU as shown by the 3 following graphs.
+Between platforms the resulting algorithm have widely different performance when compared to CPU as shown by the 3 following graphs.
+Because it was expected to be used on float the benchmark involved only float matrix.
 The GPU performance are relatively the same with a performance for a 11k x 11k matrix above 3sec.
 
 **Platform 1**
