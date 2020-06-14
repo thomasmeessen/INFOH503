@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "tools.h"
+#include <chrono>
 
 using namespace std;
 
@@ -174,55 +175,98 @@ Opencl_buffer padding_calc(Opencl_buffer input, cl_kernel kernel, int max_distan
 
     clFinish(ocl_stuff.queue); // syncing
 
-    image_padded.write_img("TESTESTEST.png", true);
+   // image_padded.write_img("TESTESTEST.png", true);
 
 
 
     return image_padded;
+}
+//Matrix have to have the same dimensions.
+Opencl_buffer matrix_multiplication(Opencl_buffer matrix1, Opencl_buffer matrix2, cl_kernel kernel,  Opencl_stuff ocl_stuff) {
+
+    assert(matrix1.cols == matrix2.cols);
+    assert(matrix1.rows == matrix2.rows);
+    int width = matrix1.cols; // because the image is padded
+    int height = matrix1.rows;
+
+    Opencl_buffer output_buffer(height, width, ocl_stuff, CV_32FC1);
+
+    clSetKernelArg(kernel, 0, sizeof(matrix1.buffer), (void*)&matrix1.buffer);
+    clSetKernelArg(kernel, 1, sizeof(matrix2.buffer), (void*)&matrix2.buffer);
+    clSetKernelArg(kernel, 2, sizeof(output_buffer.buffer), (void*)&output_buffer.buffer);
+    size_t global_work_size_image[] = { (size_t)width, (size_t)height };
+
+    clEnqueueNDRangeKernel(ocl_stuff.queue,
+        kernel,
+        2,
+        nullptr,
+        global_work_size_image,
+        nullptr,
+        0,
+        nullptr, nullptr);
+
+    clFinish(ocl_stuff.queue); // syncing
 
 
+
+    return output_buffer;
 }
 
 
 
-Opencl_buffer integral_image_cost(Opencl_buffer costBuffer, cl_kernel padding_kernel, int max_distance, Opencl_stuff ocl_stuff) {
+
+vector<Opencl_buffer> integral_image_cost(Opencl_buffer costBuffer, cl_kernel padding_kernel, int max_distance, Opencl_stuff ocl_stuff, Opencl_buffer source, cl_kernel mult_kernel) {
     cv::Mat matrix[16];
     costBuffer.get_values1((costBuffer.buffer_size / 16), costBuffer.rows / 16, matrix);
     Opencl_buffer first = Opencl_buffer(matrix[0], ocl_stuff, 0, CV_32FC1);
+    cv::Mat final_sum = matrix_multiplication(source, first, mult_kernel, ocl_stuff).get_values();
     compute_integral_image(first, ocl_stuff);
     first = padding_calc(first, padding_kernel, max_distance, ocl_stuff);
-    first.write_img("concat_first.png", true);
     cv::Mat final_matrix = first.get_values();
+    Opencl_buffer final_sum_buffer1 = Opencl_buffer(final_sum, ocl_stuff, 0, CV_32FC1);
    for (int i = 1; i < 16; i++) {
         Opencl_buffer test = Opencl_buffer(matrix[i], ocl_stuff, 0, CV_32FC1);
+        Opencl_buffer sum = matrix_multiplication(source, test, mult_kernel, ocl_stuff);
+
+        cv::vconcat(final_sum, sum.get_values(), final_sum);
+
         compute_integral_image(test, ocl_stuff);
         Opencl_buffer integral_image_padded = padding_calc(test, padding_kernel, max_distance, ocl_stuff);
 
         cv::vconcat(final_matrix, integral_image_padded.get_values(), final_matrix);
-       // cv::vconcat(final_matrix, first.get_values(), final_matrix);
+        integral_image_padded.free();
+        sum.free();
     }
     Opencl_buffer test1 = Opencl_buffer(final_matrix, ocl_stuff, 0, CV_32FC1);
-     test1.write_img("concat.png", true);
+    Opencl_buffer final_sum_buffer = Opencl_buffer(final_sum, ocl_stuff, 0, CV_32FC1);
+    vector<Opencl_buffer> results;
+    results.push_back(test1);
+    results.push_back(final_sum_buffer);
 
-    return test1;
+    return results;
 }
 
 
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
-             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, cl_kernel padding_kernel, int radius = 9) {
+             struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, cl_kernel padding_kernel, cl_kernel mult_kernel, int radius = 9) {
 
 
     Opencl_buffer guiding_image_buffer(guiding_image_path, ocl_stuff, max_distance);
-     Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
-     Opencl_buffer integral_image_padded= padding_calc(integral_image, padding_kernel, max_distance, ocl_stuff);
+ /*   Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
+    Opencl_buffer integral_image_squared = matrix_multiplication(integral_image, integral_image, mult_kernel, ocl_stuff);
 
-    compute_integral_image(integral_image_padded, ocl_stuff);
-    integral_image_padded.write_img("paddedThisTHIs.png", true);
+    compute_integral_image(integral_image, ocl_stuff);
+    compute_integral_image(integral_image_squared, ocl_stuff);
 
-    Opencl_buffer costBufferIntegral= integral_image_cost(costBuffer, padding_kernel, max_distance, ocl_stuff);
-    //Opencl_buffer costBufferIntegral;
-   // guiding_image_buffer.write_img("Guided_image_test.png", true);
+    Opencl_buffer integral_image_padded = padding_calc(integral_image, padding_kernel, max_distance, ocl_stuff);
+    Opencl_buffer integral_image_squared_padded = padding_calc(integral_image_squared, padding_kernel, max_distance, ocl_stuff);
 
+    vector<Opencl_buffer> results = integral_image_cost(costBuffer, padding_kernel, max_distance, ocl_stuff, guiding_image_buffer, mult_kernel);
+
+    Opencl_buffer costBufferIntegral = results[0];
+    Opencl_buffer sum = results[1];*/
+
+    guiding_image_buffer.write_img("Guided_image_test.png", true);
 
     int width = guiding_image_buffer.cols - 2 * max_distance; // because the image is padded
     int height = guiding_image_buffer.rows - 2 * max_distance;
@@ -241,8 +285,10 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
     clSetKernelArg(kernel, 7, sizeof(radius), &radius);
-    clSetKernelArg(kernel, 8, sizeof(integral_image_padded.buffer), &integral_image_padded);
+    /*clSetKernelArg(kernel, 8, sizeof(integral_image_padded.buffer), &integral_image_padded);
     clSetKernelArg(kernel, 9, sizeof(costBufferIntegral.buffer), &costBufferIntegral);
+    clSetKernelArg(kernel, 10, sizeof(integral_image_squared_padded.buffer), &integral_image_squared_padded);
+    clSetKernelArg(kernel, 11, sizeof(sum.buffer), &sum);*/
 
     size_t global_work_size_image[] = {(size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
 
@@ -260,8 +306,8 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     // - Read Ak and Bk from the first pass
 
 
-    a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, true);
-    b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, true);
+    //a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, true);
+    //b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, true);
 
 
     //Seconde pass
@@ -291,7 +337,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     // - Freeing memory
     a_k_buffer.free();
     b_k_buffer.free();
-    integral_image.free();
+    //integral_image.free();
     guiding_image_buffer.free();
 
     return  output_filter_buffer;

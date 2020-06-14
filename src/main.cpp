@@ -31,6 +31,7 @@ const string right_image_path = "paper1.png";
 const string median_filter_path = "median_filter.cl";
 const string cost_by_layer_source_path = "cost_volume.cl";
 const string padding_source_path = "padding.cl";
+const string matrix_term_mult_source_path = "matrix_term_mult.cl";
 cl_program cost_by_layer_program;
 cl_program guidedFilterStart_program;
 cl_program guidedFilterEnd_program;
@@ -39,6 +40,7 @@ cl_program left_right_consistency_program;
 cl_program densification_program;
 cl_program median_filter_program;
 cl_program padding_program;
+cl_program matrix_term_mult_program;
 cl_kernel cost_volume_kernel;
 cl_kernel guidedFilter_kernel;
 cl_kernel guidedFilterEnd_kernel;
@@ -47,6 +49,7 @@ cl_kernel left_right_consistency_kernel;
 cl_kernel densification_kernel;
 cl_kernel median_filter_kernel;
 cl_kernel padding_kernel;
+cl_kernel matrix_term_mult_kernel;
 Opencl_stuff ocl_stuff;
 
 
@@ -125,6 +128,12 @@ void compile_sources(){
     if (error != CL_SUCCESS)
         printf("error with padding with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
 
+    //matrix term by term multiplication
+    compile_source(&matrix_term_mult_source_path, &matrix_term_mult_program, ocl_stuff.device, ocl_stuff.context);
+    matrix_term_mult_kernel = clCreateKernel(matrix_term_mult_program, "matrix_mult", &error);
+    if (error != CL_SUCCESS)
+        printf("error with matrix term by term multiplication with error code : %i. list of error msgs : https://streamhpc.com/blog/2013-04-28/opencl-error-codes/\n", error);
+
 }
 
 
@@ -135,18 +144,23 @@ Opencl_buffer compute_depth_map(const string &start_image_path, const string &en
 
     Opencl_buffer cost_volume = cost_range_layer(start_image_path, end_image_path, disparity_range, cost_volume_kernel,
                                                  ocl_stuff, disparity_sign);
-    cost_volume.write_img("Cost_for_layer_normalized_" + indicator + "_.png", true);
+    //cost_volume.write_img("Cost_for_layer_normalized_" + indicator + "_.png", true);
     
-    printf("Cost %s done\n", indicator.c_str());
+   // printf("Cost %s done\n", indicator.c_str());
+    auto start_guided = std::chrono::steady_clock::now();
     Opencl_buffer filtered_cost = guidedFilter(start_image_path, disparity_range, guidedFilter_kernel,
-                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff, padding_kernel, 2);
-    filtered_cost.write_img("filtered_cost_" + indicator + "_.png", true);
-    printf("Filtering %s done\n", indicator.c_str());
+                                               guidedFilterEnd_kernel, cost_volume, ocl_stuff, padding_kernel, matrix_term_mult_kernel, 9);
+    auto end_guided = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds_guided = end_guided - start_guided;
+    auto guided_time = elapsed_seconds_guided.count();
+    cout << "TIME FOR GUIDED: " << guided_time << endl;
+    //filtered_cost.write_img("filtered_cost_" + indicator + "_.png", true);
+    //printf("Filtering %s done\n", indicator.c_str());
     cost_volume.free();
     
     Opencl_buffer depth_map = cost_selection(filtered_cost, disparity_range, disparity_selection_kernel, ocl_stuff);
-    depth_map.write_img("depth_map_" + indicator + "_" + start_image_path, true);
-    printf("Depth map %s done \n", indicator.c_str());
+    //depth_map.write_img("depth_map_" + indicator + "_" + start_image_path, true);
+    //printf("Depth map %s done \n", indicator.c_str());
     filtered_cost.free();
     
     return depth_map;
@@ -172,26 +186,57 @@ int main(int argc, char** argv)
 
     // Disabled during integral image testing
 
-
+    auto start_consistent_depth = std::chrono::steady_clock::now();
     Opencl_buffer left_depth_map = compute_depth_map(left_image_path, right_image_path, MAX_DISTANCE, Movement_direction::L_to_r);  // must return depth map
+    left_depth_map.write_img((string)"left_depth_map_output.png", true);
+    auto end_L_R_depth = std::chrono::steady_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds_L_R_depth = end_L_R_depth - start_consistent_depth;
+    auto L_R_depth_time = elapsed_seconds_L_R_depth.count();
+    cout << "TIME FOR LR depth map generation: " << L_R_depth_time << endl;
+
+    auto start_R_L_dept = std::chrono::steady_clock::now();
 
     Opencl_buffer right_depth_map =  compute_depth_map(right_image_path, left_image_path, MAX_DISTANCE, Movement_direction::R_to_l);
+    right_depth_map.write_img((string)"right_depth_map_output.png", true);
+
+    auto end_R_L_depth = std::chrono::steady_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds_R_L_depth = end_R_L_depth - start_R_L_dept;
+    auto R_L_depth_time = elapsed_seconds_R_L_depth.count();
+    cout << "TIME FOR RL depth map generation: " << R_L_depth_time << endl;
+
+
+    start_consistent_depth = std::chrono::steady_clock::now();
 
     Opencl_buffer consistent_depth_map = left_right_consistency(left_depth_map, right_depth_map, left_right_consistency_kernel, ocl_stuff);
-    printf("Left Right consistency done\n");
+
+    auto end_consistent_depth = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds_guided = end_consistent_depth - start_consistent_depth;
+    auto consistent_depth_time = elapsed_seconds_guided.count();
+    cout << "TIME FOR CONSISTENT DEPTH MAP: " << consistent_depth_time << endl;
+   // printf("Left Right consistency done\n");
     consistent_depth_map.write_img((string) "consistentcy_output.png", true);
     
+
+
+
+    auto start_densification = std::chrono::steady_clock::now();
     densification(left_depth_map, consistent_depth_map, densification_kernel, ocl_stuff);
-    printf("densification/filling done\n");
+   // printf("densification/filling done\n");
 
 
-    consistent_depth_map.free();
     Opencl_buffer left_depth_map_with_padding = left_depth_map.clone(MAX_DISTANCE);
     Opencl_buffer median_image = median_filter(left_depth_map_with_padding, median_filter_kernel, MAX_DISTANCE, ocl_stuff);
+    auto end_densification = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds_densification = end_densification - start_densification;
+    auto densification_time = elapsed_seconds_densification.count();
+    cout << "TIME FOR DENSIFICATION/FILLING: " << densification_time << endl;
     median_image.write_img((string)"median_filter_densification_output.png", true);
     left_depth_map.write_img((string) "densification_output.png", true);
     median_image.free();
     left_depth_map.free();
+    consistent_depth_map.free();
 
     return 0;
 
