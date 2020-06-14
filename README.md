@@ -81,12 +81,16 @@ And Obviously we have different expectation regarding the different speed up we 
 
 |   |  Run 1 |
 |---|---|
-| LR depth map generation  |   0.101171 s |
-| RL depth map generation |  0.115929 s |
-| occlusion detection|  0.0004026 s|
-| occlusion filling| 0.0016828 s|
+| LR depth map generation  |   0.681242 s |
+| RL depth map generation |  0.620401 s |
+| occlusion detection|  0.0002219 s|
+| occlusion filling| 0.0013298 s|
 
-First of all we direcly notice that our runs are far less consistent than the paper implementation.
+The results show that the use the box filter within a guided Filter yields worst results than the first case. It could be due to the fact that the source image isn't big enough and therefore all the
+steps needed to run the guided Filter with the integral images take more time than a simple "for loop" inside of the kernel. Nevertheless, the box filter is only used in the first part of the guided Filter
+and therefore we could see a bigger improvement with the 2 coefficients a_k and b_k using the box filter as well.
+
+As for the results without the box filter, first of all we directly notice that our runs are far less consistent than the paper implementation.
 
 |   |  GPU average| CPU average| Speed Up|
 |---|---|--- |--- |
@@ -100,12 +104,12 @@ The most versatile component is the occlusion detection that sometimes gives us 
 
 As expected we have speed ups on the integral image generation. Not as much as we would have expected. The slow downs are probably partly due to:
  - We don't use local memories
- - We use four kernels to achieve this task : Cost volume, guidedfilterStart, guidedfilterEnd, disparity selection. This leads to a lot of data transfer inbetween device and host.
+ - We use four kernels to achieve this task : Cost volume, guidedfilterStart, guidedfilterEnd, disparity selection. This leads to a lot of data transfer in-between device and host.
  - The image used is small
 
 The occlusion detection has the smallest speedup. probably because it is such a small task on a small image.
 
-And finaly the occlusion filling which as unexpected as it is has the biggest speed up.
+And finally the occlusion filling which as unexpected as it is has the biggest speed up.
 
 ### 1.4 Resulting images
 **Occlusion detection**
@@ -120,8 +124,17 @@ And finaly the occlusion filling which as unexpected as it is has the biggest sp
 
 ![](img/median_filter_densification_output.png)
 
+### 1.5 Guided Filter
+The guided filter in this project is divided in 2 main parts. The first part calculates the coefficients "a_k" and "b_k" and the second part uses these coefficients to calculate the filtered image.
+This is done in this way because in order to calculate the final filtered image, we need to go throw the omega window once again, but this time while using the values of "a_k" and "b_k" previously calculated.
+There exists 2 version of this filter. One that is using the normal approach to calculate all the needed components of each formula, and the other which is using the box filters.
+In the latter version, there are 4 different box filters in place:
+- **Source pixels** contains the integral image for pixels from the source image. It corresponds to the "µ_k" in the equation 14 at page 256 in the paper.
+- **Source pixels squared** contains the integral image for pixels from the source image squared. Used for calculating the sigma from the equation 14 at page 256 in the paper.
+- **Cost** contains the integral image for cost pixels.  It corresponds to the "p_k" in the equation 14 at page 256 in the paper.
+- **Product of the source pixels with cost pixels** contains the integral image for the product of source pixels with cost pixels. It corresponds to the top part of the equation 12 at the page 256 in the paper.
 
-### 1.5 To go further
+### 1.6 To go further
 What we would have liked to implement in order to have a real gain of speed compared to the sequential implementation are:
 - Use of local memory
 - Handle images that are bigger than the available memory
@@ -146,13 +159,13 @@ The algorithm is composed of 3 kernels;
 
 - Bloc Scan (S)
 - Transpose
-- Inter-Block synchronisation.(IB)
+- Inter-Block synchronization.(IB)
 
 Because S & IB are both row-based process the kernels are enqueued so that a finite number of block is mapped to each row.
 The choice was made to avoid padding meaning that each global memory access are conditioned to a check on the thread index.
 
 Scan is the most complex kernel, it use a local buffer to perform a dyadic sum and store the bloc sum into a separate global memory for further operations.
-Each kernel perform 2 float reading&writing operation in the global memory becaused it proved difficult to transfer opencv matrix to device memory encoded in float2 using the version of the libraries that worked on all our platforms.
+Each kernel perform 2 float reading&writing operation in the global memory because it proved itself difficult to transfer opencv matrix to device memory encoded in float2 using the version of the libraries that worked on all our platforms.
 It is expected to have bank conflict that may be avoided by further work on the kernel.
 
 
