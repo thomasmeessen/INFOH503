@@ -238,6 +238,7 @@ vector<Opencl_buffer> integral_image_cost(Opencl_buffer costBuffer, cl_kernel pa
         sum.free();
     }
     Opencl_buffer test1 = Opencl_buffer(final_matrix, ocl_stuff, 0, CV_32FC1);
+    test1.write_img("THISISTHETESTCOST.png", true);
     Opencl_buffer final_sum_buffer = Opencl_buffer(final_sum, ocl_stuff, 0, CV_32FC1);
     vector<Opencl_buffer> results;
     results.push_back(test1);
@@ -252,7 +253,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
 
 
     Opencl_buffer guiding_image_buffer(guiding_image_path, ocl_stuff, max_distance);
- /*   Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
+    Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
     Opencl_buffer integral_image_squared = matrix_multiplication(integral_image, integral_image, mult_kernel, ocl_stuff);
 
     compute_integral_image(integral_image, ocl_stuff);
@@ -264,7 +265,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     vector<Opencl_buffer> results = integral_image_cost(costBuffer, padding_kernel, max_distance, ocl_stuff, guiding_image_buffer, mult_kernel);
 
     Opencl_buffer costBufferIntegral = results[0];
-    Opencl_buffer sum = results[1];*/
+    Opencl_buffer sum = results[1];
 
     guiding_image_buffer.write_img("Guided_image_test.png", true);
 
@@ -285,10 +286,10 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     clSetKernelArg(kernel, 5, sizeof(height),&height);
     clSetKernelArg(kernel, 6, sizeof(max_distance), &max_distance);
     clSetKernelArg(kernel, 7, sizeof(radius), &radius);
-    /*clSetKernelArg(kernel, 8, sizeof(integral_image_padded.buffer), &integral_image_padded);
+    clSetKernelArg(kernel, 8, sizeof(integral_image_padded.buffer), &integral_image_padded);
     clSetKernelArg(kernel, 9, sizeof(costBufferIntegral.buffer), &costBufferIntegral);
     clSetKernelArg(kernel, 10, sizeof(integral_image_squared_padded.buffer), &integral_image_squared_padded);
-    clSetKernelArg(kernel, 11, sizeof(sum.buffer), &sum);*/
+    clSetKernelArg(kernel, 11, sizeof(sum.buffer), &sum);
 
     size_t global_work_size_image[] = {(size_t)width, (size_t)height, (size_t)max_distance }; // don't work on pixels in the padding hence the "- 2*max_distance"
 
@@ -337,7 +338,7 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
     // - Freeing memory
     a_k_buffer.free();
     b_k_buffer.free();
-    //integral_image.free();
+    integral_image.free();
     guiding_image_buffer.free();
 
     return  output_filter_buffer;
