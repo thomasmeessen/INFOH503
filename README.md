@@ -29,12 +29,14 @@ But compared to our guided filter theirs use 3 channels. Where we only use 1 as 
 ### 1.2 speed Up we could expect
 We can divide their implementation in 4 parts :
 
-|   |   |
-|---|---|
-| LR depth map generation  |  0.337987 s |
-| RL depth map generation |  0.313787 s |
-| occlusion detection|  0.000444775 s|
-| occlusion filling| 0.106078 s|
+|   |  run 1 |run 2|run 3 | average|
+|---|---|---|---|---|
+| LR depth map generation  |  0.273283 s |0.279657 s |0.2833 s |0.27874666 s |
+| RL depth map generation |  0.273258 s |0.289527 s |0.282332 s |0.28170566 s |
+| occlusion detection|  0.000444775 s|0.000443615 s |0.000458526 s |0.000448972 s |
+| occlusion filling| 0.0907852 s|0.0911058 s |0.0902498 s |0.0907136 s |
+
+We can notice that their implementation is consistent through the runs.
 
 And Obviously we had different expectation regarding the different speed up we could achieve.
 
@@ -60,8 +62,25 @@ And Obviously we had different expectation regarding the different speed up we c
 
 
 ### 1.3 actual speed up
-Add data of transfer time on our different computers to be able to estimate how much time we're losing on data transfer only on average.
-**add actual speed ups we got I can add timer to their code at the designated areas and we need to remove every write image and terminal print and useless ifs beofre measuring**
+
+|   |  Run 1 | Run 2| Run 3| Average |
+|---|---|--- |--- |---|
+| LR depth map generation  |   0.101171 s | 0.109507 s| 0.106023 s| 0.105567 s|
+| RL depth map generation |  0.115929 s | 0.109131 s| 0.0984433 s| 0.1078344 s|
+| occlusion detection|  0.0004026 s| 0.0005632 s| 0.0002664 s| 0.0004107 s|
+| occlusion filling| 0.0016828 s| 0.0018479 s| 0.0021746 s| 0.0019017 s|
+
+First of all we direcly notice that our runs are far less consistent than the paper implementation.
+
+|   |  GPU average| CPU average| Speed Up|
+|---|---|--- |--- |
+| LR depth map generation  |   0.105567 s | 0.27874666 s|2.64x | 
+| RL depth map generation |  0.1078344 s | 0.28170566 s| 2.61x| 
+| occlusion detection|  0.0004107 s| 0.000448972 s| 1.09x| 
+| occlusion filling| 0.0019017 s| 0.0907136 s| 47x|
+|Total   |0.2157138 s|0.651614892| 3.02x| 
+
+The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower
 
 ### 1.4 To go further
 quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
