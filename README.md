@@ -1,19 +1,19 @@
 # INFOH503
 Course project for ULB INFOH503 - Introduction to GPU Programming
 
-This repository is te fruit of the work of 4 master student from the polytechnic of the ULB.
-It contain a crude implementation of a algorithm computing a Stereo Disparity trough Cost Aggregation with Guided Filter described in Tan and Monasse in 2014.
+This repository is the fruit of the work of 4 master students from the ULB.
+It contains a crude implementation of an algorithm that computes a Stereo Disparity trough Cost Aggregation with Guided Filter described in Tan and Monasse in 2014.
 This project was developed in the particular setup of the covid-19 pandemic and suffered many setbacks caused by diversity in the team IT background and by a stiff learning curved caused by OpenCL and it's multi-platform deployment.
-At the project's end the team achieved intermediate skills with OpenCL, a working implementation of the Stereo Disparity and had a close look at the computation of an integral image.
+At the end of the project, the team achieved intermediate skills with OpenCL, a working implementation of the Stereo Disparity and had a close look at the computation of an integral image.
 
 ## Setup
 
 Dependencies of the projects are OpenCV and Opencl 1.2
-The project is build using cmake;
+The project is built using cmake;
 
 
 
-## Warning : 
+## Warning :
 All the results  with respect to the depth map have been measured using the image from the paper.
 
 The interesting branches in this repository are:
@@ -86,7 +86,7 @@ First of all we direcly notice that our runs are far less consistent than the pa
 | occlusion filling| 0.0019017 s| 0.0907136 s| 47x|
 |Total   |0.2157138 s|0.651614892| 3.02x|
 
-The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower. Note also that LR depth map generation and RL depth map generation are the same procedure. 
+The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower. Note also that LR depth map generation and RL depth map generation are the same procedure.
 
 As expected we have speed ups on the integral image generation. Not as much as we would have expected. The slow downs are probably partly due to:
  - We don't use local memories
@@ -97,7 +97,6 @@ The occlusion detection has the smallest speedup. probably because it is such a 
 
 And finaly the occlusion filling which as unexpected as it is has the biggest speed up.
 
-<<<<<<< HEAD
 ### 1.4 Resulting images
 **Occlusion detection**
 ![](img/consistentcy_output.png)
@@ -110,15 +109,12 @@ And finaly the occlusion filling which as unexpected as it is has the biggest sp
 
 
 ### 1.5 To go further
-quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
-=======
-### 1.4 To go further
 What we would have liked to implement in order to have a real gain of speed compared to the sequential implementation are:
 - Use of local memory
-- Handle images that are bigger than the avaialble memory
+- Handle images that are bigger than the available memory
 - Resolve the banking conflicts
 - Use properly the integral image for the guided filter
-- Computer the filtering in one step instead of 2. 
+- Computer the filtering in one step instead of 2.
 >>>>>>> fe38773718c70a4ef2a8ac8b27da643013f56d40
 
 ## 2. Integral Image
