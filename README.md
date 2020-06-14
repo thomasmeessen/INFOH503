@@ -74,15 +74,26 @@ First of all we direcly notice that our runs are far less consistent than the pa
 
 |   |  GPU average| CPU average| Speed Up|
 |---|---|--- |--- |
-| LR depth map generation  |   0.105567 s | 0.27874666 s|2.64x | 
-| RL depth map generation |  0.1078344 s | 0.28170566 s| 2.61x| 
-| occlusion detection|  0.0004107 s| 0.000448972 s| 1.09x| 
+| LR depth map generation  |   0.105567 s | 0.27874666 s|2.64x |
+| RL depth map generation |  0.1078344 s | 0.28170566 s| 2.61x|
+| occlusion detection|  0.0004107 s| 0.000448972 s| 1.09x|
 | occlusion filling| 0.0019017 s| 0.0907136 s| 47x|
-|Total   |0.2157138 s|0.651614892| 3.02x| 
+|Total   |0.2157138 s|0.651614892| 3.02x|
 
 The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower
 
-### 1.4 To go further
+### 1.4 Resulting images
+**Occlusion detection**
+![](img/consistentcy_output.png)
+**Occlusion filling (without median filter)**
+
+![](img/densification_output.png)
+**Occlusion filling (with median filter)**
+
+![](img/median_filter_densification_output.png)
+
+
+### 1.5 To go further
 quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
 
 ## 2. Integral Image
