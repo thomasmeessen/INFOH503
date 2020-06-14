@@ -138,8 +138,13 @@ It's worth mentioning that the result of the guided filter while using the box f
 taken for implementing this version are correct and the possible problem has to do with adding the padding to the integral image and also with all the summations and divisions, there can be a loss in the precision.
 #### Result for guided filter with 2 box filters (Source pixels and source pixels squared)
 
-![](img/densification_output_source.png)
+![](img/densification_output_2_box_filters.png)
 
+#### Result for guided filter with 4 box filters
+![](img/densification_output_final.png)
+
+While using the 2 box filters that don't include the use of the cost, we get somewhat a similar result as for the first version. However, while using the cost box filter, the result is far from we could expect, and therefore
+the bug is somewhere within the cost integral image.
 
 ### 1.6 To go further
 What we would have liked to implement in order to have a real gain of speed compared to the sequential implementation are:
