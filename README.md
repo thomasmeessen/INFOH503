@@ -16,20 +16,23 @@ The project is build using cmake;
 
 ## 1. Stereo Disparity
 ### 1.1 Paper implementation
-- Their implementation is already quit  e optimized.
-- room for instruction prallelization
-- OpenMP used for parallelization of occlusion filling
-- use the three color channel -> 3 time more operation? 
+First of all it is important to look at their implementation in order to speculate on the kind of acceleration we could expect. And when looking at it we of course find a well optimized implementation.
 
+Notably:
+- Filtering each layer as soon as it is generated.
+- Once filtered  we update the disparity of each pixel for the final depth map;
+- OpenMP is used for parallelization of occlusion filling.
 
-their results
+But compared to our guided filter theirs use 3 channels. Where we only use 1 as we use a grayscale image. So we should be doing 2\*x\*y\*disparity less operations.
 
+Their result on the paper image is :
 |   |   |
 |---|---|
 | filter_cost_volume 1 time  |  0.337987 | 
 | filter_cost_volume 2 time |  0.313787 | 
 | occlusion detection time|  0.000444775|
 | occlusion filling time| 0.106078|
+**maybe try on other small images?**
 ### 1.2 speed Up we could expect
 
 - biggest speed up we should expect would be on the first and biggest operation/loop /more heavy loaded : generating all the layers and using the guided filter on them. . In their implementation it is done in 
