@@ -80,7 +80,7 @@ And Obviously we have different expectation regarding the different speed up we 
 (With the integral image in guided filter)
 
 |   |  Run 1 |
-|---|---|---|
+|---|---|
 | LR depth map generation  |   0.101171 s |
 | RL depth map generation |  0.115929 s |
 | occlusion detection|  0.0004026 s|
