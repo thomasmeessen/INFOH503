@@ -157,13 +157,13 @@ struct KernelPack{
         cl_int error1, error2, error3;
         cl_program  scan_program;
         compile_source(&scan_kernel_path, &scan_program, ocl_stuff.device, ocl_stuff.context);
-        cl_kernel scan_kernel = clCreateKernel(scan_program, "scan", &error1);
+        scan_kernel = clCreateKernel(scan_program, "scan", &error1);
         cl_program  scan_integration_program;
         compile_source(&scan_integration_kernel_path, &scan_integration_program, ocl_stuff.device, ocl_stuff.context);
-        cl_kernel scan_integration_kernel = clCreateKernel(scan_integration_program, "scan_integration", &error3);
+        scan_integration_kernel = clCreateKernel(scan_integration_program, "scan_integration", &error3);
         cl_program transpose_program;
         compile_source(&transpose_kernel_path, &transpose_program, ocl_stuff.device, ocl_stuff.context);
-        cl_kernel transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
+        transpose_kernel = clCreateKernel(transpose_program, "transpose", &error2);
         // assert( (error1 == CL_SUCCESS) and (error2 == CL_SUCCESS) and (error3 == CL_SUCCESS));
         assert(error1 == CL_SUCCESS);
         assert(error2 == CL_SUCCESS);
