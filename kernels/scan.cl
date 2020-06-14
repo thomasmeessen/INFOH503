@@ -16,10 +16,15 @@ kernel void scan( __global  float *indat, __local float *temp, __global float *b
     size_t local_id = get_local_id(0);
     size_t group_id = get_group_id(0);
 
+
+
+    // Each group work on a subset of the global memory
     int row_number = group_id / num_bloc_per_row;
-    int row_id = idx - row_number *  local_size * num_bloc_per_row;
     int memory_offset = row_number * pixel_per_row ;
-    bool in_memory = (2*row_id+1 + memory_offset < (row_number +1) * pixel_per_row );
+    // Within this subset, a row this is the thread id
+    int row_id = idx - row_number *  local_size * num_bloc_per_row;
+    // Because their are more thread than pixel in a subset there is a activation condition
+    bool in_memory = (2*row_id+1 < pixel_per_row );
     int n = local_size *2;
 
     // Copy a element to the local memory and converting it to float
