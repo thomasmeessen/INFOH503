@@ -182,7 +182,7 @@ It is expected to have bank conflict that may be avoided by further work on the 
 
 ### State of the work
 
-Our current implementation do not run as is on all of our platform with some difficulties identified to trust the bloc size given by the opencl interface.
+Our current implementation does not run as is on all of our platform with some difficulties identified to trust the bloc size given by the opencl interface.
 Additionally at the of the work the introduction of ocl-grinder there has been some bad memory access identified on the scan kernel.
 But tools usage was not generalized to all platforms to difficulty of installation leading to no further development of this issue.
 
