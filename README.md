@@ -48,7 +48,7 @@ And Obviously we had different expectation regarding the different speed up we c
 
     3. Selecting the best disparity for every pixel
 
-    For each of those steps we can expect a speedup by working on all the layers and all the pixels of each layer at the same time. Compared to their implementation wheere everything is accessed sequentially. The bottleneck of our implementation should be the memory transfer.
+    For each of those steps we can expect a speedup by working on all the layers and all the pixels of each layer at the same time. Compared to the sequential implementation where. The bottleneck of our implementation should be the memory transfers.
 
 2. Occlusion detection
       We should see a speed up for big images but on small images we should not get one.
@@ -62,6 +62,9 @@ And Obviously we had different expectation regarding the different speed up we c
 ### 1.3 actual speed up
 Add data of transfer time on our different computers to be able to estimate how much time we're losing on data transfer only on average. 
 **add actual speed ups we got I can add timer to their code at the designated areas and we need to remove every write image and terminal print and useless ifs beofre measuring**
+
+### 1.4 To go further
+quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
 
 ## 2. Integral Image
   
