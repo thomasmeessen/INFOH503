@@ -25,26 +25,40 @@ Notably:
 
 But compared to our guided filter theirs use 3 channels. Where we only use 1 as we use a grayscale image. So we should be doing 2\*x\*y\*disparity less operations.
 
-Their result on the paper image is :
-|   |   |
-|---|---|
-| filter_cost_volume 1 time  |  0.337987 | 
-| filter_cost_volume 2 time |  0.313787 | 
-| occlusion detection time|  0.000444775|
-| occlusion filling time| 0.106078|
 **maybe try on other small images?**
 ### 1.2 speed Up we could expect
+We can divide their implementation in 4 parts :
 
-- biggest speed up we should expect would be on the first and biggest operation/loop /more heavy loaded : generating all the layers and using the guided filter on them. . In their implementation it is done in 
- for(|disparity|){ for every pixel} where as us we only do for(disparity) and then every pixel is parallelizedd and this the biggest cost is the memory transfer. 
- so here the bottleneck is really the memory transfer. we could expect a speedp for that part of the disparity size in a perfect world so at most disparity size. let's say taht for small data data transfer is a big drawback so let's say half the size of disparity. 
- and we also use an integral image to compute the sums for the a_k and b_k. which adds the load of computing the integral image (and thus memory back and forth) but reduce by a factor **add factor**  the first step of our first step of the filtering.
- - left right consistency : probably not much speed up
- - occlusion detection : could expect a small speed up. they do *for every pixel for every disparity* where as we parallelize for every pixel and every thread check for every disparity. once again memory  => bottleneck
- - on occlusion filling it would be nice to have a little bit of speed up against their openmp implementation but we can't expect much. they build an historigram and stuff.
+|   |   |
+|---|---|
+| LR depth map generation  |  0.337987 s | 
+| RL depth map generation |  0.313787 s | 
+| occlusion detection|  0.000444775 s|
+| occlusion filling| 0.106078 s|
 
- so we can expect large speed up + small speed ups.
- so for a disparity 16 we get a 8x and for the small speed ups between 2 and 4 (really depends on data transfer).
+And Obviously we had different expectation regarding the different speed up we could achieve.
+
+1.  Depth map
+    
+    The Depth map is computed in 4 step :
+    
+    1. Computing the cost of every pixel for each disparity
+
+    2. Filtering each disparity layer
+
+    3. Selecting the best disparity for every pixel
+
+    For each of those steps we can expect a speedup by working on all the layers and all the pixels of each layer at the same time. Compared to their implementation wheere everything is accessed sequentially. The bottleneck of our implementation should be the memory transfer.
+
+2. Occlusion detection
+      We should see a speed up for big images but on small images we should not get one.
+
+3. occlusion filling
+    As they rely on openmp to do the filling we can't really expect that much of a speedup against their implementation;
+
+
+
+
 ### 1.3 actual speed up
 Add data of transfer time on our different computers to be able to estimate how much time we're losing on data transfer only on average. 
 **add actual speed ups we got I can add timer to their code at the designated areas and we need to remove every write image and terminal print and useless ifs beofre measuring**
