@@ -6,7 +6,7 @@ It contain a crude implementation of a algorithm computing a Stereo Disparity tr
 This project was developed in the particular setup of the covid-19 pandemic and suffered many setbacks caused by diversity in the team IT background and by a stiff learning curved caused by OpenCL and it's multi-platform deployment.
 At the project's end the team achieved intermediate skills with OpenCL, a working implementation of the Stereo Disparity and had a close look at the computation of an integral image.
 
-## Setup 
+## Setup
 
 Dependencies of the projects are OpenCV and Opencl 1.2
 The project is build using cmake;
@@ -31,17 +31,17 @@ We can divide their implementation in 4 parts :
 
 |   |   |
 |---|---|
-| LR depth map generation  |  0.337987 s | 
-| RL depth map generation |  0.313787 s | 
+| LR depth map generation  |  0.337987 s |
+| RL depth map generation |  0.313787 s |
 | occlusion detection|  0.000444775 s|
 | occlusion filling| 0.106078 s|
 
 And Obviously we had different expectation regarding the different speed up we could achieve.
 
 1.  Depth map
-    
+
     The Depth map is computed in 4 step :
-    
+
     1. Computing the cost of every pixel for each disparity
 
     2. Filtering each disparity layer
@@ -60,14 +60,29 @@ And Obviously we had different expectation regarding the different speed up we c
 
 
 ### 1.3 actual speed up
-Add data of transfer time on our different computers to be able to estimate how much time we're losing on data transfer only on average. 
+Add data of transfer time on our different computers to be able to estimate how much time we're losing on data transfer only on average.
 **add actual speed ups we got I can add timer to their code at the designated areas and we need to remove every write image and terminal print and useless ifs beofre measuring**
 
 ### 1.4 To go further
 quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
 
 ## 2. Integral Image
-  
+
+
+
+
+The resulting algorithm have widely different performance when compared to CPU between platforms.
+The GPU performance are relatively the same with a performance for a 11k x 11k matrix above 3sec.
+
+
+![](img/config1.png)
+
+![](img/config2.png)
+
+![](img/config3.png)
+
+
+
 ## 3. SetBacks & Trivia
 
 In no specific order the following events were cause for significant delay:
@@ -78,7 +93,7 @@ In no specific order the following events were cause for significant delay:
 - Kernel does not launch but error code is not mapped in documentation
 - Writing a function that print the kernel compilation errors
 - Difficulties in knowledge and code-related information spreading due to lockdown leading to several avoidable and hard to spot bugs
-- Working only with integrated GPU necessitating added complexity due to small block size (256) 
+- Working only with integrated GPU necessitating added complexity due to small block size (256)
 - Code behavior variation between platforms making bug harder to spot.
 - Memory leaks
 
@@ -87,15 +102,3 @@ Some important notes:
 
 - Commits history displayed in the repository do not reflect each authors participation due to unequal git and C++ prior experience.
 - It is best if a linux distribution is used to compile the code, it can be tricky on windows to setup the dependencies.
-
-
-
-## Resources
-
-- [C++ wrappers reference](https://github.khronos.org/OpenCL-CLHPP/)
-
-- [Quick reference guide](https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/OpenCL-2.1-refcard.pdf)
-
-- [A programming guide](https://rocm-documentation.readthedocs.io/en/latest/Programming_Guides/Opencl-programming-guide.html#programming-model)
-
-
