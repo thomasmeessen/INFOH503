@@ -51,10 +51,10 @@ And Obviously we had different expectation regarding the different speed up we c
     For each of those steps we can expect a speedup by working on all the layers and all the pixels of each layer at the same time. Compared to the sequential implementation where. The bottleneck of our implementation should be the memory transfers.
 
 2. Occlusion detection
-      We should see a speed up for big images but on small images we should not get one.
+      We should see a speed up for big images but on small images we should not get one. As it doesn't involve that much parallelization(thread) for small images. So the bigger the image the bigger the speedup compared to the sequential algorithm.
 
 3. occlusion filling
-    As they rely on openmp to do the filling we can't really expect that much of a speedup against their implementation;
+    As they rely on openmp to do the filling we can't really expect that much of a speedup against their implementation.
 
 
 
