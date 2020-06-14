@@ -134,6 +134,13 @@ In the latter version, there are 4 different box filters in place:
 - **Cost** contains the integral image for cost pixels.  It corresponds to the "p_k" in the equation 14 at page 256 in the paper.
 - **Product of the source pixels with cost pixels** contains the integral image for the product of source pixels with cost pixels. It corresponds to the top part of the equation 12 at the page 256 in the paper.
 
+It's worth mentioning that the result of the guided filter while using the box filters is not the same as in the first version. There are some bugs in the code that were not resolved, however the number of steps
+taken for implementing this version are correct and the possible problem has to do with adding the padding to the integral image and also with all the summations and divisions, there can be a loss in the precision.
+#### Result for guided filter with one box filter (Source pixels)
+
+![](img/median_filter_densification_output.png)
+
+
 ### 1.6 To go further
 What we would have liked to implement in order to have a real gain of speed compared to the sequential implementation are:
 - Use of local memory
