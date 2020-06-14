@@ -136,9 +136,9 @@ In the latter version, there are 4 different box filters in place:
 
 It's worth mentioning that the result of the guided filter while using the box filters is not the same as in the first version. There are some bugs in the code that were not resolved, however the number of steps
 taken for implementing this version are correct and the possible problem has to do with adding the padding to the integral image and also with all the summations and divisions, there can be a loss in the precision.
-#### Result for guided filter with one box filter (Source pixels)
+#### Result for guided filter with 2 box filters (Source pixels and source pixels squared)
 
-![](img/median_filter_densification_output.png)
+![](img/densification_output_source.png)
 
 
 ### 1.6 To go further
