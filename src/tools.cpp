@@ -182,11 +182,12 @@ Opencl_buffer padding_calc(Opencl_buffer input, cl_kernel kernel, int max_distan
     return image_padded;
 }
 //Matrix have to have the same dimensions.
+//Multiplication term by term of two matrix
 Opencl_buffer matrix_multiplication(Opencl_buffer matrix1, Opencl_buffer matrix2, cl_kernel kernel,  Opencl_stuff ocl_stuff) {
 
     assert(matrix1.cols == matrix2.cols);
     assert(matrix1.rows == matrix2.rows);
-    int width = matrix1.cols; // because the image is padded
+    int width = matrix1.cols; 
     int height = matrix1.rows;
 
     Opencl_buffer output_buffer(height, width, ocl_stuff, CV_32FC1);
@@ -214,7 +215,8 @@ Opencl_buffer matrix_multiplication(Opencl_buffer matrix1, Opencl_buffer matrix2
 
 
 
-
+//This functions takes the cost image, divide it on 16 smaller images, applies the integral image on each of them, adds padding to each of them and then reconstruct the bigger image 
+// of integral images by concating the smaller ones. It also calculates the product of source pixels and cost pixels.
 vector<Opencl_buffer> integral_image_cost(Opencl_buffer costBuffer, cl_kernel padding_kernel, int max_distance, Opencl_stuff ocl_stuff, Opencl_buffer source, cl_kernel mult_kernel) {
     cv::Mat matrix[16];
     costBuffer.get_values1((costBuffer.buffer_size / 16), costBuffer.rows / 16, matrix);
@@ -238,7 +240,6 @@ vector<Opencl_buffer> integral_image_cost(Opencl_buffer costBuffer, cl_kernel pa
         sum.free();
     }
     Opencl_buffer test1 = Opencl_buffer(final_matrix, ocl_stuff, 0, CV_32FC1);
-    test1.write_img("THISISTHETESTCOST.png", true);
     Opencl_buffer final_sum_buffer = Opencl_buffer(final_sum, ocl_stuff, 0, CV_32FC1);
     vector<Opencl_buffer> results;
     results.push_back(test1);
@@ -251,23 +252,27 @@ vector<Opencl_buffer> integral_image_cost(Opencl_buffer costBuffer, cl_kernel pa
 Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kernel kernel, cl_kernel kernel0,
              struct Opencl_buffer costBuffer, Opencl_stuff ocl_stuff, cl_kernel padding_kernel, cl_kernel mult_kernel, int radius = 9) {
 
-
+    //buffer for the source image
     Opencl_buffer guiding_image_buffer(guiding_image_path, ocl_stuff, max_distance);
+    //buffer for the integral image of the source image.
     Opencl_buffer integral_image = guiding_image_buffer.clone(0, CV_32FC1);
+    //buffer for the integral image of the source pixels squared.
     Opencl_buffer integral_image_squared = matrix_multiplication(integral_image, integral_image, mult_kernel, ocl_stuff);
-
+    //calculate the integral image for the source image.
     compute_integral_image(integral_image, ocl_stuff);
+    //calculate the integral image for the source image squared.
     compute_integral_image(integral_image_squared, ocl_stuff);
 
+    //add padding
     Opencl_buffer integral_image_padded = padding_calc(integral_image, padding_kernel, max_distance, ocl_stuff);
     Opencl_buffer integral_image_squared_padded = padding_calc(integral_image_squared, padding_kernel, max_distance, ocl_stuff);
 
+    //results contain two buffers. The first one is the cost integral image and the second one is the integral image for the product of the source pixels
+    // and the cost pixels.
     vector<Opencl_buffer> results = integral_image_cost(costBuffer, padding_kernel, max_distance, ocl_stuff, guiding_image_buffer, mult_kernel);
 
     Opencl_buffer costBufferIntegral = results[0];
     Opencl_buffer sum = results[1];
-
-    guiding_image_buffer.write_img("Guided_image_test.png", true);
 
     int width = guiding_image_buffer.cols - 2 * max_distance; // because the image is padded
     int height = guiding_image_buffer.rows - 2 * max_distance;
@@ -303,12 +308,6 @@ Opencl_buffer guidedFilter(string guiding_image_path, int max_distance, cl_kerne
         nullptr, nullptr);
 
     clFinish(ocl_stuff.queue); // syncing
-
-    // - Read Ak and Bk from the first pass
-
-
-    //a_k_buffer.write_img("guided_a_k_normalized_" + guiding_image_path, true);
-    //b_k_buffer.write_img("guided_b_k_normalized_" + guiding_image_path, true);
 
 
     //Seconde pass

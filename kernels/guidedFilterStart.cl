@@ -1,6 +1,5 @@
 kernel void memset(__global unsigned char* src, __global float* dst_a_k, __global float* dst_b_k, __global float* cost, int original_width, int original_height, int padding_size, int radius, __global float* integral_image, __global float* integral_image_cost,
   __global float* integral_image_squared, __global float* sum_s_c) {
-//kernel void memset(__global unsigned char* src, __global float* dst_a_k, __global float* dst_b_k, __global float* cost, int original_width, int original_height, int padding_size, int radius) {
     const int x = get_global_id(0);
     const int y = get_global_id(1);
     const int z = get_global_id(2);
@@ -27,31 +26,10 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
 
 
 
-
-
-   /* int line_size = (original_width + 2 * padding_size);
-    int ix = new_x - radius;
-    int iy = new_y - radius;
-    int jx = new_x + radius;
-    int jy = new_y + radius;
-
-    int p1 = jx + jy*line_size;
-    int p2 = (ix-1) + jy*line_size;
-    int p3 = jx + (iy-1)*line_size;
-    int p4 = (ix-1) + (iy-1)*line_size;*/
-
-
   float integral_image_sum = integral_image[p1] - integral_image[p2] - integral_image[p3] + integral_image[p4];
 
-    /*if (x == 100 && y == 100 && z == 0) {
-        printf("bottom right  %f %i\n", integral_image[p1], p1);
-        printf("bottom left  %f %i\n", integral_image[p2], p2);
-        printf("top right  %f %i\n", integral_image[p3], p3);
-        printf("top left  %f %i\n", integral_image[p4], p4);
-    }*/
-
-    float integral_image_cost_sum = integral_image_cost[p1] - integral_image_cost[p2] - integral_image_cost[p3] + integral_image_cost[p4];
-   float integral_image_squared_sum = integral_image_squared[p1] - integral_image_squared[p2] - integral_image_squared[p3] + integral_image_squared[p4];
+  float integral_image_cost_sum = integral_image_cost[p1] - integral_image_cost[p2] - integral_image_cost[p3] + integral_image_cost[p4];
+  float integral_image_squared_sum = integral_image_squared[p1] - integral_image_squared[p2] - integral_image_squared[p3] + integral_image_squared[p4];
 
 
     //bottom right
@@ -79,21 +57,8 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
         }
     }
 
-    // float mu_k = src_image_pixels_sum / omega_size;
-     float mu_k = integral_image_sum / omega_size;
+   float mu_k = integral_image_sum / omega_size;
 
-   /* if (x >= 383 && y>= 284 && (mu_k1 - mu_k) < 1) {
-     //   printf("x %i \n", x);
-  
-        printf("y %i \n", y);
-    }*/
-
-
-   /* if (x == 100 && y == 100 && z == 0) {
-        printf("mu_k  %f \n", mu_k);
-        printf("mu_k1  %f \n", mu_k1);
-
-    }*/
     p_k_sum = integral_image_cost_sum;
     src_image_pixels_sum_square = integral_image_squared_sum;
     p_pixels_product = sum_src_cost;
@@ -105,8 +70,8 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     float b_k = p_k - a_k * mu_k;
 
 
-        dst_a_k[central_pixel] = a_k;
-        dst_b_k[central_pixel] = b_k;
+    dst_a_k[central_pixel] = a_k;
+    dst_b_k[central_pixel] = b_k;
 
 
 }
