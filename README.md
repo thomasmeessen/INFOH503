@@ -13,7 +13,13 @@ The project is build using cmake;
 
 
 
+## Warning : 
+All the results  with respect to the depth map have been measured using the image from the paper.
 
+The interesting branches in this repository are:
+- **Master** used to compute the performances of our implementation;
+- **Benchmark scan** contains the implementations (CPU and GPU) of the integral used for the benchmark as well.
+- **integral_image_guidedFilter** Proof Of Concept of integrating the integral image kernel into the guided filter  
 ## 1. Stereo Disparity
 ### 1.1 Paper implementation
 First of all it is important to look at their implementation in order to speculate on the kind of acceleration we could expect. And when looking at it we of course find a well optimized implementation.
@@ -38,7 +44,7 @@ We can divide their implementation in 4 parts :
 
 We can notice that their implementation is consistent through the runs.
 
-And Obviously we had different expectation regarding the different speed up we could achieve.
+And Obviously we have different expectation regarding the different speed up we could achieve.
 
 1.  Depth map
 
@@ -80,10 +86,24 @@ First of all we direcly notice that our runs are far less consistent than the pa
 | occlusion filling| 0.0019017 s| 0.0907136 s| 47x|
 |Total   |0.2157138 s|0.651614892| 3.02x| 
 
-The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower
+The most versatile component is the occlusion detection that sometimes gives us a 2x acceleration and sometimes is a fourth slower. Note also that LR depth map generation and RL depth map generation are the same procedure. 
+
+As expected we have speed ups on the integral image generation. Not as much as we would have expected. The slow downs are probably partly due to:
+ - We don't use local memories
+ - We use four kernels to achieve this task : Cost volume, guidedfilterStart, guidedfilterEnd, disparity selection. This leads to a lot of data transfer inbetween device and host.
+ - The image used is small
+
+The occlusion detection has the smallest speedup. probably because it is such a small task on a small image.
+
+And finaly the occlusion filling which as unexpected as it is has the biggest speed up.
 
 ### 1.4 To go further
-quick notes about what we could do to make it run faster : use local memories, solve banking conflicts,..;
+What we would have liked to implement in order to have a real gain of speed compared to the sequential implementation are:
+- Use of local memory
+- Handle images that are bigger than the avaialble memory
+- Resolve the banking conflicts
+- Use properly the integral image for the guided filter
+- Computer the filtering in one step instead of 2. 
 
 ## 2. Integral Image
 
