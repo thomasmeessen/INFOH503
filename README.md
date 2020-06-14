@@ -99,10 +99,13 @@ And finaly the occlusion filling which as unexpected as it is has the biggest sp
 
 ### 1.4 Resulting images
 **Occlusion detection**
+
 ![](img/consistentcy_output.png)
+
 **Occlusion filling (without median filter)**
 
 ![](img/densification_output.png)
+
 **Occlusion filling (with median filter)**
 
 ![](img/median_filter_densification_output.png)
@@ -115,7 +118,6 @@ What we would have liked to implement in order to have a real gain of speed comp
 - Resolve the banking conflicts
 - Use properly the integral image for the guided filter
 - Computer the filtering in one step instead of 2.
->>>>>>> fe38773718c70a4ef2a8ac8b27da643013f56d40
 
 ## 2. Integral Image
 
