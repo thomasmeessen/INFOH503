@@ -43,7 +43,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
     float sum_src_cost = sum_s_c[p1] - sum_s_c[p2] - sum_s_c[p3] + sum_s_c[p4];
        
 
-    for (int i = -radius; i <= radius; i++) {
+   /* for (int i = -radius; i <= radius; i++) {
         for (int j = -radius; j <= radius; j++) {
             const int src_id = ((new_y + j) * (original_width + 2 * padding_size)) + (new_x + i);
             const int cost_id = ((new_y + j) * (original_width + 2 * padding_size)) + (new_x + i)+ z*padded_image_size;
@@ -55,7 +55,7 @@ kernel void memset(__global unsigned char* src, __global float* dst_a_k, __globa
 
             p_pixels_product += (float) source_pixel * cost_pixel;
         }
-    }
+    }*/
 
    float mu_k = integral_image_sum / omega_size;
 
